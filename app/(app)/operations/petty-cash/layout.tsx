@@ -18,7 +18,7 @@ export default async function PettyCashLayout({
   }
 
   return (
-    <div className="flex w-full flex-col gap-5">
+    <div className="flex w-full min-w-0 flex-col gap-5">
       <PettyCashSubnav canManage={canManagePettyCash(profile)} />
       {children}
     </div>

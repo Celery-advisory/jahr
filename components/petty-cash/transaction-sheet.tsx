@@ -193,13 +193,13 @@ export function TransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
+      <SheetContent className="h-dvh w-full! max-w-none! gap-0 overflow-hidden p-0 sm:h-full sm:max-w-md!">
+        <SheetHeader className="shrink-0 border-b border-border pr-12">
           <SheetTitle>
             {mode === "expense" ? "Record petty cash expense" : "Record cash received"}
           </SheetTitle>
         </SheetHeader>
-        <div className="flex flex-col gap-4 px-4 pb-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4">
           <Field label="Fund">
             <Select
               value={fundId}
@@ -323,6 +323,7 @@ export function TransactionSheet({
                   ref={fileRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="file:mr-3"
                 />
               </Field>
             </>
@@ -383,22 +384,27 @@ export function TransactionSheet({
               .
             </p>
           ) : null}
-
-          <div className="flex flex-wrap justify-end gap-2 pt-2">
+        </div>
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-popover px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={pending}
               onClick={() => submit("draft")}
             >
               {pending ? <Spinner /> : null}
               Save draft
             </Button>
-            <Button type="button" disabled={pending} onClick={() => submit("submit")}>
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              disabled={pending}
+              onClick={() => submit("submit")}
+            >
               {pending ? <Spinner /> : null}
               {mode === "expense" ? "Submit expense" : "Submit"}
             </Button>
-          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -106,7 +106,11 @@ export function SettingsSection({
           <h2 className="text-sm font-medium">{title}</h2>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
-        {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
+        {action ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap [&_a]:w-full [&_button]:w-full sm:[&_a]:w-auto sm:[&_button]:w-auto">
+            {action}
+          </div>
+        ) : null}
       </div>
       {children}
     </section>

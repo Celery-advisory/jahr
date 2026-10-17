@@ -47,10 +47,10 @@ export function FundSpotlight({
         <p className="mt-1 text-sm text-white/80">{body}</p>
       </div>
       {canManage ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Button
             type="button"
-            className="bg-white text-[#171717] hover:bg-white/90"
+            className="w-full bg-white text-[#171717] hover:bg-white/90 sm:w-auto"
             onClick={() => setOpen(true)}
             disabled={!hasActiveFund}
           >
@@ -60,7 +60,7 @@ export function FundSpotlight({
             href={reconcileHref}
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white",
+              "w-full border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white sm:w-auto",
             )}
           >
             Reconcile

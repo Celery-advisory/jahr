@@ -54,13 +54,13 @@ export default async function PettyCashReportsPage({
         </p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-2" method="get">
-        <label className="flex flex-col gap-1.5 text-sm">
+      <form className="grid gap-3 sm:flex sm:flex-wrap sm:items-end" method="get">
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
           Fund
           <select
             name="fund"
             defaultValue={fundId}
-            className="h-10 rounded-md border border-input bg-background px-3"
+            className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 sm:w-48"
           >
             <option value="">All funds</option>
             {bundle.funds.map((fund) => (
@@ -70,25 +70,25 @@ export default async function PettyCashReportsPage({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
           From
           <input
             type="date"
             name="from"
             defaultValue={from}
-            className="h-10 rounded-md border border-input bg-background px-3"
+            className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
           To
           <input
             type="date"
             name="to"
             defaultValue={to}
-            className="h-10 rounded-md border border-input bg-background px-3"
+            className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3"
           />
         </label>
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="outline" className="w-full sm:w-auto">
           Apply
         </Button>
       </form>
@@ -135,14 +135,33 @@ export default async function PettyCashReportsPage({
                     title="Expenses in this range show up here"
                     action={
                       canManage ? (
-                        <Link href="/operations/petty-cash" className={cn(buttonVariants())}>
+                        <Link href="/operations/petty-cash" className={cn(buttonVariants(), "w-full sm:w-auto")}>
                           Record an expense
                         </Link>
                       ) : null
                     }
                   />
                 ) : (
-                  <table className="w-full text-sm">
+                  <>
+                    <ul className="sm:hidden">
+                      {categories.map((category) => (
+                        <li
+                          key={category.name}
+                          className="flex items-center justify-between gap-3 border-t border-[#E7ECF2] px-4 py-3 first:border-0"
+                        >
+                          <div className="min-w-0">
+                            <CategoryPill name={category.name} />
+                            <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                              {category.count} {category.count === 1 ? "transaction" : "transactions"}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-sm font-medium tabular-nums">
+                            {formatPettyCashMoney(category.total, currency)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                    <table className="hidden w-full text-sm sm:table">
                     <thead className="bg-[#F6F8FB] text-left text-xs font-medium text-[#667085]">
                       <tr>
                         <th className="px-4 py-2.5 font-medium">Category</th>
@@ -164,6 +183,7 @@ export default async function PettyCashReportsPage({
                       ))}
                     </tbody>
                   </table>
+                  </>
                 )}
               </section>
             </div>
@@ -190,7 +210,7 @@ function CategoryPill({ name }: { name: string }) {
   const tone = categoryTone(name);
   return (
     <span
-      className="inline-flex rounded-md px-2 py-0.5 text-xs font-medium"
+      className="inline-flex max-w-full truncate rounded-md px-2 py-0.5 text-xs font-medium"
       style={{ backgroundColor: tone.bg, color: tone.text }}
     >
       {name}
@@ -200,9 +220,9 @@ function CategoryPill({ name }: { name: string }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <article className="rounded-xl border border-border bg-card p-6">
+    <article className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-6">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-xl font-medium tracking-tight tabular-nums">{value}</p>
+      <p className="mt-2 text-xl font-medium tracking-tight break-words tabular-nums">{value}</p>
     </article>
   );
 }

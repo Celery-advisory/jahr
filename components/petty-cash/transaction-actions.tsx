@@ -99,16 +99,17 @@ export function TransactionActions({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
       {status === "pending_approval" && !createdByViewer ? (
         <>
-          <Button type="button" onClick={approve} disabled={pending}>
+          <Button type="button" className="w-full sm:w-auto" onClick={approve} disabled={pending}>
             {pending ? <Spinner /> : null}
             Approve
           </Button>
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => {
               setReason("");
               setRejectOpen(true);
@@ -123,6 +124,7 @@ export function TransactionActions({
         <Button
           type="button"
           variant="outline"
+          className="w-full sm:w-auto"
           onClick={() => {
             setReason("");
             setVoidOpen(true);
@@ -136,6 +138,7 @@ export function TransactionActions({
         <Button
           type="button"
           variant="outline"
+          className="w-full sm:w-auto"
           onClick={removeDraft}
           disabled={pending}
         >

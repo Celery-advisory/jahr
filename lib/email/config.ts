@@ -1,17 +1,55 @@
+/** Public site supervisors and employees open from email. */
+const CANONICAL_APP_URL = "https://tms.jagroup.co";
+
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/$/, "");
+}
+
+function hostnameOf(value: string): string | null {
+  try {
+    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    return new URL(withProtocol).hostname;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Absolute origin for assets linked from transactional email (logo, etc.).
- * Prefer NEXT_PUBLIC_APP_URL in production so clients can load images.
+ * VERCEL_URL is the unique deployment host (*.vercel.app). That host sits
+ * behind Vercel login, so it must not be the link in approval mail.
+ */
+function isVercelDeploymentHost(value: string): boolean {
+  const host = hostnameOf(value);
+  return host !== null && host.endsWith(".vercel.app");
+}
+
+function explicitAppUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL;
+  if (!raw || isVercelDeploymentHost(raw)) return null;
+  return stripTrailingSlash(raw);
+}
+
+/**
+ * Absolute origin for links and assets in transactional email.
+ * Deployed mail uses the public TMS domain, never a *.vercel.app host.
  */
 export function getAppBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const explicit = explicitAppUrl();
+  if (explicit) return explicit;
+
+  if (process.env.VERCEL_ENV === "production") {
+    const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    if (productionHost && !isVercelDeploymentHost(productionHost)) {
+      const host = hostnameOf(productionHost);
+      if (host) return `https://${host}`;
+    }
+    return CANONICAL_APP_URL;
   }
-  if (process.env.APP_URL) {
-    return process.env.APP_URL.replace(/\/$/, "");
+
+  if (process.env.VERCEL_ENV === "preview" || process.env.NODE_ENV === "production") {
+    return CANONICAL_APP_URL;
   }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
-  }
+
   return "http://localhost:3000";
 }
 

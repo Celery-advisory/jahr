@@ -49,15 +49,15 @@ export default async function PettyCashTransactionPage({
         >
           Transactions
         </Link>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
+        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
             <p className="text-xs text-muted-foreground">
               {transaction.transactionNumber}
             </p>
-            <h1 className="text-xl font-medium tracking-tight">
+            <h1 className="text-xl font-medium tracking-tight break-words">
               {transaction.description}
             </h1>
-            <p className="text-sm tabular-nums">
+            <p className="text-sm break-words tabular-nums">
               {directionLabel(transaction.direction)}{" "}
               {formatPettyCashMoney(transaction.amount, transaction.currency)}
             </p>
@@ -73,7 +73,7 @@ export default async function PettyCashTransactionPage({
         canManage={canManage}
       />
 
-      <section className="grid gap-4 rounded-xl border border-border bg-card p-6 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 sm:p-6">
         <Detail label="Date" value={formatPettyCashDate(transaction.transactionDate)} />
         <Detail label="Fund" value={transaction.fundName} />
         <Detail
@@ -108,7 +108,7 @@ export default async function PettyCashTransactionPage({
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="text-sm font-medium">Receipts</h2>
         {receipts.length === 0 ? (
           <EmptyState kind="documents" size="compact" title="Receipts show up here" />
@@ -136,7 +136,7 @@ export default async function PettyCashTransactionPage({
                   >
                     Download
                   </a>
-                  <span className="text-muted-foreground">{receipt.fileName}</span>
+                  <span className="min-w-0 text-muted-foreground break-all">{receipt.fileName}</span>
                 </div>
               </li>
             ))}
@@ -144,7 +144,7 @@ export default async function PettyCashTransactionPage({
         )}
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <h2 className="text-sm font-medium">Activity</h2>
         {activity.length === 0 ? (
           <EmptyState kind="inbox" size="compact" title="Changes show up here" />
@@ -170,9 +170,9 @@ export default async function PettyCashTransactionPage({
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm">{value}</p>
+      <p className="mt-1 text-sm break-words">{value}</p>
     </div>
   );
 }

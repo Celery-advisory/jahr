@@ -64,7 +64,7 @@ function PolicySummary({
   const money = (amount: number) => formatPettyCashMoney(amount, settings.defaultCurrency);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
       <div className="flex flex-col gap-8">
         <PolicyGroup title="Transaction controls">
           <Fact label="Default currency" value={currencyDisplay(settings.defaultCurrency)} />
@@ -164,7 +164,7 @@ function PolicyEditor({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
       <div className="flex flex-col gap-8">
         <PolicyGroup title="Transaction controls">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -251,11 +251,11 @@ function PolicyEditor({
           </div>
         </PolicyGroup>
       </div>
-      <div className="mt-6 flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel} disabled={pending}>
           Cancel
         </Button>
-        <Button type="button" onClick={save} disabled={pending}>
+        <Button type="button" className="w-full sm:w-auto" onClick={save} disabled={pending}>
           {pending ? <Spinner /> : null}
           Save changes
         </Button>
@@ -283,7 +283,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border py-3 last:border-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium tabular-nums">{value}</dd>
+      <dd className="text-right text-sm font-medium break-words tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -298,12 +298,12 @@ function Rule({
   value: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-border py-3 last:border-0">
-      <div>
+    <div className="flex flex-col gap-1 border-b border-border py-3 last:border-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="min-w-0">
         <p className="text-sm font-medium">{title}</p>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
-      <p className="text-sm font-medium">{value}</p>
+      <p className="text-sm font-medium sm:shrink-0">{value}</p>
     </div>
   );
 }

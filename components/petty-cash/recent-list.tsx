@@ -15,7 +15,7 @@ export function RecentTransactions({ rows }: { rows: LedgerRow[] }) {
         </div>
         <Link
           href="/operations/petty-cash/transactions"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1 text-sm whitespace-nowrap text-muted-foreground hover:text-foreground"
         >
           View all
           <ArrowRight className="size-3.5" />
@@ -37,7 +37,7 @@ export function RecentTransactions({ rows }: { rows: LedgerRow[] }) {
               href={`/operations/petty-cash/transactions/${row.id}`}
               className="flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150 hover:bg-secondary/60"
             >
-              <span className="w-12 shrink-0 text-xs leading-tight text-muted-foreground">
+              <span className="hidden w-12 shrink-0 text-xs leading-tight text-muted-foreground sm:block">
                 <span className="block">{date.primary}</span>
                 {date.secondary ? <span className="block">{date.secondary}</span> : null}
               </span>
@@ -62,20 +62,34 @@ export function RecentTransactions({ rows }: { rows: LedgerRow[] }) {
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{row.description}</span>
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-sm font-medium">{row.description}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 text-sm font-medium tabular-nums sm:hidden",
+                      incoming ? "text-[#166534]" : "text-[#DC2626]",
+                    )}
+                  >
+                    {incoming ? "+" : "\u2212"} {formatPettyCashMoney(row.amount, row.currency)}
+                  </span>
+                </span>
                 <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  <span className="sm:hidden">
+                    {date.secondary ? `${date.primary} ${date.secondary}` : date.primary}
+                    {" · "}
+                  </span>
                   {detail}
                 </span>
               </span>
               <span
                 className={cn(
-                  "shrink-0 text-sm font-medium tabular-nums",
+                  "hidden shrink-0 text-sm font-medium tabular-nums sm:inline",
                   incoming ? "text-[#166534]" : "text-[#DC2626]",
                 )}
               >
                 {incoming ? "+" : "\u2212"} {formatPettyCashMoney(row.amount, row.currency)}
               </span>
-              <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+              <ArrowRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
             </Link>
           );
         })}
@@ -83,7 +97,7 @@ export function RecentTransactions({ rows }: { rows: LedgerRow[] }) {
       <div className="border-t border-border px-5 py-2.5 text-center">
         <Link
           href="/operations/petty-cash/transactions"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1 text-sm whitespace-nowrap text-muted-foreground hover:text-foreground"
         >
           See all transactions
           <ArrowRight className="size-3.5" />

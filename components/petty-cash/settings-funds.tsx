@@ -177,7 +177,7 @@ function FundCard({
   onActivate: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
       <div className="flex items-start gap-3">
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
           <p className="truncate text-sm font-medium">{fund.name}</p>
@@ -226,10 +226,10 @@ function FundDetailSheet({
 }) {
   return (
     <Sheet open={fund !== null} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent className="h-dvh w-full! max-w-none! overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] sm:h-full sm:max-w-md!">
         {fund ? (
           <>
-            <SheetHeader>
+            <SheetHeader className="pr-12">
               <SheetTitle>Fund details</SheetTitle>
             </SheetHeader>
             <div className="flex flex-col gap-6 px-4 pb-6">
@@ -256,8 +256,8 @@ function FundDetailSheet({
                 />
                 <DetailRow label="Department" value={fund.departmentName ?? "No department"} />
               </dl>
-              <div className="flex justify-end">
-                <Button type="button" onClick={onEdit}>
+              <div className="flex sm:justify-end">
+                <Button type="button" className="w-full sm:w-auto" onClick={onEdit}>
                   Edit fund
                 </Button>
               </div>
@@ -324,7 +324,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border py-3 last:border-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-right text-sm font-medium">{value}</dd>
+      <dd className="max-w-[60%] text-right text-sm font-medium break-words">{value}</dd>
     </div>
   );
 }

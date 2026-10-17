@@ -88,7 +88,7 @@ export function LedgerFiltersBar({
   const exportQuery = exportParams.toString();
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
       <form
         className="relative w-full sm:w-64"
         onSubmit={(event) => {
@@ -107,7 +107,7 @@ export function LedgerFiltersBar({
           className="pl-9"
         />
       </form>
-      <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+      <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center">
       <FilterSelect
         label="Fund"
         value={filters.fundId || "all"}
@@ -135,7 +135,10 @@ export function LedgerFiltersBar({
       <DateRangeFilter filters={filters} onChange={(from, to) => push({ from, to })} />
       <a
         href={exportQuery ? `/api/petty-cash/export?${exportQuery}` : "/api/petty-cash/export"}
-        className={cn(buttonVariants(), "bg-[#1f2353] text-white hover:bg-[#2a2f68]")}
+        className={cn(
+          buttonVariants(),
+          "col-span-2 w-full bg-[#1f2353] text-white hover:bg-[#2a2f68] sm:col-span-1 sm:w-auto",
+        )}
       >
         <Download className="size-4" />
         Export
@@ -143,7 +146,7 @@ export function LedgerFiltersBar({
       {hasLedgerFilters(filters) ? (
         <Link
           href="/operations/petty-cash/transactions"
-          className={cn(buttonVariants({ variant: "ghost" }))}
+          className={cn(buttonVariants({ variant: "ghost" }), "col-span-2 sm:col-span-1 sm:w-auto")}
         >
           Clear
         </Link>
@@ -183,13 +186,13 @@ function DateRangeFilter({
       <PopoverTrigger
         className={cn(
           buttonVariants({ variant: "outline" }),
-          "w-full justify-between gap-2 px-3 font-normal sm:w-auto",
+          "col-span-2 w-full min-w-0 justify-between gap-2 px-3 font-normal sm:col-span-1 sm:w-auto",
         )}
       >
         <span className="truncate">{rangeLabel(filters.from, filters.to)}</span>
         <ChevronDown className="size-4 text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-2">
+      <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] p-2">
         <Calendar
           mode="range"
           numberOfMonths={1}
@@ -245,7 +248,7 @@ function FilterSelect({
       }}
       items={items}
     >
-      <SelectTrigger className="w-full sm:w-auto sm:max-w-48" aria-label={label}>
+      <SelectTrigger className="w-full min-w-0 max-w-full sm:w-auto sm:max-w-48" aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

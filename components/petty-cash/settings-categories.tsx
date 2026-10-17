@@ -8,6 +8,7 @@ import {
   ConfirmDialog,
   RowMenu,
   SettingsSection,
+  transactionCountLabel,
 } from "@/components/petty-cash/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -213,7 +214,105 @@ export function SettingsCategories({ bundle }: { bundle: PettyCashBundle }) {
               }
             />
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 md:hidden">
+                <FilterChip
+                  label="Group"
+                  selected={groupIds}
+                  options={groups.map((entry) => ({
+                    id: entry.group.id,
+                    name: entry.group.name,
+                    kind: "group" as const,
+                  }))}
+                  onChange={setGroupIds}
+                />
+                <FilterChip
+                  label="Transactions"
+                  selected={transactionRanges}
+                  options={TRANSACTION_RANGES.map((range) => ({
+                    id: range.id,
+                    name: range.name,
+                    kind: "count" as const,
+                  }))}
+                  onChange={setTransactionRanges}
+                />
+                <FilterChip
+                  label="Status"
+                  selected={statuses}
+                  options={[
+                    { id: "active", name: "Active", kind: "active" },
+                    { id: "inactive", name: "Inactive", kind: "inactive" },
+                  ]}
+                  onChange={(next) => setStatuses(next as Array<"active" | "inactive">)}
+                />
+              </div>
+              <ul className="md:hidden">
+                {tableGroups.map((entry) => (
+                  <li key={entry.group.id} className="border-b border-border last:border-0">
+                    <div className="flex items-center justify-between gap-3 bg-[#F6F8FB] px-4 py-2">
+                      <TonePill name={entry.group.name} />
+                      <GroupMenu
+                        group={entry.group}
+                        onEdit={() => setEditor({ kind: "group", category: entry.group })}
+                        onAdd={() =>
+                          setEditor({
+                            kind: "category",
+                            category: null,
+                            parentId: entry.group.id,
+                          })
+                        }
+                        onToggle={() => toggleActive(entry.group, true)}
+                      />
+                    </div>
+                    {entry.categories.map((item) => (
+                        <div
+                          key={item.category.id}
+                          className="flex items-start gap-3 border-t border-[#E7ECF2] px-4 py-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={cn(
+                                "truncate text-sm font-medium",
+                                !item.category.isActive && "text-muted-foreground",
+                              )}
+                            >
+                              {item.category.name}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {transactionCountLabel(item.transactionCount)}
+                              {" · "}
+                              {item.category.isActive ? "Active" : "Inactive"}
+                            </p>
+                          </div>
+                          <CategoryMenu
+                            category={item.category}
+                            group={entry.group}
+                            onEdit={() =>
+                              setEditor({
+                                kind: "category",
+                                category: item.category,
+                                parentId: item.category.parentId ?? entry.group.id,
+                              })
+                            }
+                            onToggle={() => toggleActive(item.category, false)}
+                            onEditGroup={() =>
+                              setEditor({ kind: "group", category: entry.group })
+                            }
+                            onAdd={() =>
+                              setEditor({
+                                kind: "category",
+                                category: null,
+                                parentId: entry.group.id,
+                              })
+                            }
+                            onToggleGroup={() => toggleActive(entry.group, true)}
+                          />
+                        </div>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[40rem] text-sm">
                 <thead className="border-b border-[#E7ECF2] bg-[#F6F8FB] text-left text-xs font-medium text-[#667085]">
                   <tr>
@@ -344,7 +443,8 @@ export function SettingsCategories({ bundle }: { bundle: PettyCashBundle }) {
                   )}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -471,8 +571,8 @@ function CategorySheet({
 
   return (
     <Sheet open={editor !== null} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
+      <SheetContent className="h-dvh w-full! max-w-none! overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] sm:h-full sm:max-w-md!">
+        <SheetHeader className="pr-12">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4 pb-6">
@@ -522,7 +622,7 @@ function CategorySheet({
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
           ) : null}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end [&_button]:w-full sm:[&_button]:w-auto">
             <Button
               type="button"
               variant="outline"

@@ -171,6 +171,7 @@ export function LedgerTable({
         </table>
         {sortable ? (
           <TablePager
+            className="border-t border-[#E7ECF2]"
             total={ordered.length}
             page={safePage}
             pageCount={pageCount}
@@ -202,8 +203,8 @@ export function LedgerTable({
                 {movementAmount(row, row.direction)}
               </p>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className="text-xs text-muted-foreground">
                   {formatPettyCashDate(row.transactionDate)}
                 </span>
@@ -221,7 +222,7 @@ export function LedgerTable({
       </div>
 
       {sortable ? (
-        <div className="lg:hidden">
+        <div className="overflow-hidden rounded-xl border border-border bg-card lg:hidden">
           <TablePager
             total={ordered.length}
             page={safePage}
@@ -279,6 +280,7 @@ function TablePager({
   pageSize,
   onPage,
   onPageSize,
+  className,
 }: {
   total: number;
   page: number;
@@ -286,14 +288,20 @@ function TablePager({
   pageSize: (typeof PAGE_SIZES)[number];
   onPage: (page: number) => void;
   onPageSize: (size: (typeof PAGE_SIZES)[number]) => void;
+  className?: string;
 }) {
   const pages = pageWindow(page, pageCount);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E7ECF2] px-4 py-3">
+    <div
+      className={cn(
+        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
+        className,
+      )}
+    >
       <p className="text-sm text-[#667085]">Total {total}</p>
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm text-[#667085]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+        <label className="flex items-center justify-between gap-2 text-sm text-[#667085] sm:justify-start">
           Lines per page
           <select
             value={pageSize}
@@ -310,7 +318,7 @@ function TablePager({
             ))}
           </select>
         </label>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between gap-1 sm:justify-start">
           <button
             type="button"
             aria-label="Previous page"
@@ -320,27 +328,32 @@ function TablePager({
           >
             <ChevronLeft className="size-4" />
           </button>
-          {pages.map((item, index) =>
-            item === "gap" ? (
-              <span key={`gap-${index}`} className="px-1 text-sm text-[#667085]">
-                ...
-              </span>
-            ) : (
-              <button
-                key={item}
-                type="button"
-                onClick={() => onPage(item)}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-full text-sm",
-                  item === page
-                    ? "bg-[#171717] text-white"
-                    : "text-[#667085] hover:bg-muted",
-                )}
-              >
-                {item + 1}
-              </button>
-            ),
-          )}
+          <span className="min-w-16 text-center text-sm text-[#667085] tabular-nums sm:hidden">
+            {page + 1} / {pageCount}
+          </span>
+          <div className="hidden items-center gap-1 sm:flex">
+            {pages.map((item, index) =>
+              item === "gap" ? (
+                <span key={`gap-${index}`} className="px-1 text-sm text-[#667085]">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => onPage(item)}
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full text-sm",
+                    item === page
+                      ? "bg-[#171717] text-white"
+                      : "text-[#667085] hover:bg-muted",
+                  )}
+                >
+                  {item + 1}
+                </button>
+              ),
+            )}
+          </div>
           <button
             type="button"
             aria-label="Next page"

@@ -112,7 +112,7 @@ export function ReplenishPanel({
   return (
     <div className="flex flex-col gap-6">
       {canManage && fund ? (
-        <section className="rounded-xl border border-border bg-card p-6">
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
           <h2 className="text-sm font-medium">Request replenishment</h2>
           {fund.needsReplenishment ? (
             <p className="mt-2 text-sm text-muted-foreground">
@@ -167,8 +167,8 @@ export function ReplenishPanel({
               className="rounded-md px-3"
             />
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button type="button" onClick={request} disabled={pending}>
+          <div className="mt-4 flex sm:justify-end">
+            <Button type="button" className="w-full sm:w-auto" onClick={request} disabled={pending}>
               {pending ? <Spinner /> : null}
               Request replenishment
             </Button>
@@ -212,14 +212,15 @@ export function ReplenishPanel({
                     placeholder="Rejection reason"
                     className="sm:max-w-xs"
                   />
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" disabled={pending} onClick={() => decide(row.id, "approve")}>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button type="button" size="sm" className="w-full sm:w-auto" disabled={pending} onClick={() => decide(row.id, "approve")}>
                       Approve
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       disabled={pending}
                       onClick={() => decide(row.id, "reject")}
                     >
@@ -230,7 +231,7 @@ export function ReplenishPanel({
               ) : null}
               {row.status === "approved" && canManage ? (
                 <div className="mt-3">
-                  <Button type="button" size="sm" disabled={pending} onClick={() => complete(row.id)}>
+                  <Button type="button" size="sm" className="w-full sm:w-auto" disabled={pending} onClick={() => complete(row.id)}>
                     {pending ? <Spinner /> : null}
                     Cash received
                   </Button>

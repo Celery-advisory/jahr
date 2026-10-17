@@ -161,7 +161,7 @@ export function PettyCashSettingsConsole({
       <div
         role="tablist"
         aria-label="Petty cash settings"
-        className="-mb-2 flex gap-1 overflow-x-auto border-b border-border"
+        className="-mx-4 -mb-2 flex gap-1 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {AREAS.map((item) => {
           const selected = area === item.id;
@@ -173,7 +173,7 @@ export function PettyCashSettingsConsole({
               aria-selected={selected}
               onClick={() => select(item.id)}
               className={cn(
-                "border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150",
+                "inline-flex h-10 shrink-0 items-center border-b-2 px-3 text-sm whitespace-nowrap transition-colors duration-150",
                 selected
                   ? "border-foreground font-medium text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",

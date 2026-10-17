@@ -23,7 +23,7 @@ export function FundList({
 }) {
   return (
     <section className="rounded-xl border border-border bg-white">
-      <div className="flex items-start justify-between gap-3 px-5 py-4">
+      <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
         <div className="space-y-0.5">
           <h2 className="text-sm font-medium">Your funds</h2>
           <p className="text-xs text-muted-foreground">Cash on hand in each fund.</p>
@@ -31,7 +31,7 @@ export function FundList({
         {canManage ? (
           <Link
             href="/operations/petty-cash/settings"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex shrink-0 items-center gap-1 text-sm whitespace-nowrap text-muted-foreground hover:text-foreground"
           >
             Manage funds
             <ArrowRight className="size-3.5" />
@@ -64,8 +64,27 @@ export function FundList({
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                     {fundMeta(fund)}
                   </span>
-                  <span className="mt-1 block text-sm font-medium tabular-nums sm:hidden">
-                    {formatPettyCashMoney(fund.availableBalance, fund.currency)}
+                  <span className="mt-1 flex flex-wrap items-center gap-2 sm:hidden">
+                    <span className="text-sm font-medium tabular-nums">
+                      {formatPettyCashMoney(fund.availableBalance, fund.currency)}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-xs font-medium",
+                        STATUS_TONE[fund.status],
+                      )}
+                    >
+                      {FUND_STATUS_LABELS[fund.status]}
+                    </span>
+                  </span>
+                  <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-secondary sm:hidden">
+                    <span
+                      className="block h-1.5 rounded-full"
+                      style={{
+                        width: `${fill}%`,
+                        backgroundColor: fund.needsReplenishment ? "#F6B93B" : "#2EC4B6",
+                      }}
+                    />
                   </span>
                 </span>
                 <span className="hidden w-36 shrink-0 sm:block">

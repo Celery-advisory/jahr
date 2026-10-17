@@ -161,8 +161,8 @@ export function FundSheet({
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
+      <SheetContent className="h-dvh w-full! max-w-none! overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] sm:h-full sm:max-w-md!">
+        <SheetHeader className="pr-12">
           <SheetTitle>{editing ? "Edit fund" : "Create fund"}</SheetTitle>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4 pb-6">
@@ -345,7 +345,7 @@ export function FundSheet({
               </Select>
             </Field>
           ) : null}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end [&_button]:w-full sm:[&_button]:w-auto">
             <Button
               type="button"
               variant="outline"

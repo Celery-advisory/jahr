@@ -123,7 +123,7 @@ export default async function PettyCashPage({
         />
       ) : (
         <>
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <div className="min-w-0 space-y-0.5">
               <h1 className="truncate text-xl font-medium tracking-tight">
                 {scopedFund ? scopedFund.name : "All funds"}
@@ -133,17 +133,15 @@ export default async function PettyCashPage({
               </p>
             </div>
             {canManage ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <PettyCashToolbar
-                  canManage={canManage}
-                  funds={bundle.funds}
-                  categories={bundle.categories}
-                  vendors={bundle.vendors}
-                  settings={bundle.settings}
-                  defaultFundId={defaultFundId}
-                  expenseOnly
-                />
-              </div>
+              <PettyCashToolbar
+                canManage={canManage}
+                funds={bundle.funds}
+                categories={bundle.categories}
+                vendors={bundle.vendors}
+                settings={bundle.settings}
+                defaultFundId={defaultFundId}
+                expenseOnly
+              />
             ) : null}
           </div>
 

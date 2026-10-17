@@ -49,13 +49,18 @@ export function PettyCashToolbar({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={() => setExpenseOpen(true)} disabled={!hasActiveFund}>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+        <Button
+          type="button"
+          className="w-full sm:w-auto"
+          onClick={() => setExpenseOpen(true)}
+          disabled={!hasActiveFund}
+        >
           <Plus />
           Record expense
         </Button>
         {reconcile && !expenseOnly ? (
-          <Link href={reconcileHref} className={cn(buttonVariants())}>
+          <Link href={reconcileHref} className={cn(buttonVariants(), "w-full sm:w-auto")}>
             Reconcile
           </Link>
         ) : null}
@@ -63,6 +68,7 @@ export function PettyCashToolbar({
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => setCashInOpen(true)}
             disabled={!hasActiveFund}
           >
@@ -111,7 +117,7 @@ export function CreateFundButton({
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+      <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setOpen(true)}>
         Create fund
       </Button>
       <FundSheet

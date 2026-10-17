@@ -36,9 +36,9 @@ export function OverviewMetrics({ items }: { items: OverviewMetric[] }) {
                   <p className="text-xs text-muted-foreground">{item.label}</p>
                   <p
                     className={cn(
-                      "font-medium tracking-tight",
+                      "font-medium tracking-tight break-words",
                       item.figure
-                        ? "text-2xl tabular-nums"
+                        ? "text-xl tabular-nums sm:text-2xl"
                         : "text-lg leading-tight",
                     )}
                   >

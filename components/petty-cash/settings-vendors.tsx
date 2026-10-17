@@ -288,10 +288,10 @@ function VendorDetailSheet({
   const stats = activity ?? emptyActivity(currency);
   return (
     <Sheet open={vendor !== null} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent className="h-dvh w-full! max-w-none! overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] sm:h-full sm:max-w-md!">
         {vendor ? (
           <>
-            <SheetHeader>
+            <SheetHeader className="pr-12">
               <SheetTitle>{vendor.name}</SheetTitle>
             </SheetHeader>
             <div className="flex flex-col gap-6 px-4 pb-6">
@@ -310,8 +310,8 @@ function VendorDetailSheet({
                 {vendor.email ? <DetailRow label="Email" value={vendor.email} /> : null}
                 {vendor.notes ? <DetailRow label="Notes" value={vendor.notes} /> : null}
               </dl>
-              <div className="flex justify-end">
-                <Button type="button" onClick={onEdit}>
+              <div className="flex sm:justify-end">
+                <Button type="button" className="w-full sm:w-auto" onClick={onEdit}>
                   Edit vendor
                 </Button>
               </div>
@@ -366,8 +366,8 @@ function VendorFormSheet({
 
   return (
     <Sheet open={sheet !== null && sheet.mode !== "detail"} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
-        <SheetHeader>
+      <SheetContent className="h-dvh w-full! max-w-none! overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] sm:h-full sm:max-w-md!">
+        <SheetHeader className="pr-12">
           <SheetTitle>{editing ? "Edit vendor" : "Add vendor"}</SheetTitle>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4 pb-6">
@@ -402,7 +402,7 @@ function VendorFormSheet({
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
           ) : null}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end [&_button]:w-full sm:[&_button]:w-auto">
             <Button
               type="button"
               variant="outline"
@@ -464,7 +464,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border py-3 last:border-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="max-w-[60%] text-right text-sm font-medium">{value}</dd>
+      <dd className="max-w-[60%] text-right text-sm font-medium break-words">{value}</dd>
     </div>
   );
 }

@@ -108,7 +108,7 @@ export function ReconcilePanel({
   return (
     <div className="flex flex-col gap-6">
       {canManage && fund ? (
-        <section className="rounded-xl border border-border bg-card p-6">
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-6">
           <h2 className="text-sm font-medium">Reconcile petty cash</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -187,8 +187,8 @@ export function ReconcilePanel({
               className="rounded-md px-3"
             />
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button type="button" onClick={submit} disabled={pending}>
+          <div className="mt-4 flex sm:justify-end">
+            <Button type="button" className="w-full sm:w-auto" onClick={submit} disabled={pending}>
               {pending ? <Spinner /> : null}
               Submit reconciliation
             </Button>
@@ -224,7 +224,7 @@ export function ReconcilePanel({
                 {row.reason ? `. ${reasonLabel(row.reason)}` : ""}
                 {row.notes ? `. ${row.notes}` : ""}
               </p>
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
                   {row.status === "reviewed"
                     ? `Reviewed by ${row.reviewedByName ?? "someone"}`
