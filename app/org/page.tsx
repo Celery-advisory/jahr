@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { OrganogramTree } from "@/components/admin/organogram-tree";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { OrganogramBoard } from "@/components/organogram/organogram-board";
 import { getShareOrganogram } from "@/lib/employees/get-directory";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export default async function PublicOrganogramPage() {
         <BrandLogo tone="black" priority className="h-6" />
         <h1 className="text-sm font-medium tracking-tight">Organogram</h1>
       </header>
-      <OrganogramTree roots={roots} variant="fit" />
+      <OrganogramBoard roots={roots} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { OrganogramTree } from "@/components/admin/organogram-tree";
+import { OrganogramBoard } from "@/components/organogram/organogram-board";
 import { getCurrentProfile } from "@/lib/auth/get-profile";
 import {
   buildOrganogram,
@@ -50,7 +50,11 @@ export default async function OrganogramPage() {
         </div>
       </div>
 
-      <OrganogramTree roots={roots} />
+      <OrganogramBoard
+        roots={roots}
+        emptyTitle="No reporting lines"
+        emptyDescription="None are visible for your account."
+      />
     </div>
   );
 }
