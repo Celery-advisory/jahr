@@ -1,7 +1,9 @@
 "use client";
 
 import {
-  useEffect,
+  createContext,
+  useContext,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -20,6 +22,10 @@ import { PERMISSION_TAG_LABELS } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 
 const BLUE = "#0070F3";
+
+type OrganogramVariant = "pan" | "fit";
+
+const OrganogramVariantContext = createContext<OrganogramVariant>("pan");
 
 function tint(color: string, percent: number): string {
   return `color-mix(in srgb, ${color} ${percent}%, white)`;
@@ -194,23 +200,42 @@ function PersonBox({
   const jobTitle = node.jobTitle?.trim() || null;
   const department = node.departmentName?.trim() || null;
   const tags = formatTags(node.tags);
-  const [open, setOpen] = useState(false);
-  const timer = useRef<number | null>(null);
+  const variant = useContext(OrganogramVariantContext);
+  const role = jobTitle || "Team member";
 
-  useEffect(() => {
-    return () => {
-      if (timer.current) window.clearTimeout(timer.current);
-    };
-  }, []);
-
-  function showCard() {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setOpen(true), 80);
-  }
-
-  function hideCard() {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setOpen(false), 140);
+  if (variant === "fit") {
+    return (
+      <Enter delayMs={delayMs}>
+        <article
+          className={cn(
+            "flex w-[132px] flex-col items-center gap-1 rounded-lg border border-border bg-card px-2 py-2 text-center",
+            "shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+          )}
+        >
+          <UserAvatar
+            name={node.name}
+            src={node.avatarUrl}
+            gender={node.gender}
+            className="size-7"
+          />
+          <p className="line-clamp-2 w-full text-[11px] font-medium leading-tight tracking-tight">
+            {node.name}
+          </p>
+          <p className="line-clamp-2 w-full text-[10px] leading-snug text-muted-foreground">
+            {role}
+          </p>
+          <span
+            className={cn(
+              "max-w-full truncate rounded-md px-1.5 text-[9px] leading-4 font-medium",
+              institutionTone(institution),
+            )}
+            title={institution}
+          >
+            {institution}
+          </span>
+        </article>
+      </Enter>
+    );
   }
 
   const className = cn(
@@ -237,9 +262,12 @@ function PersonBox({
 
   return (
     <Enter delayMs={delayMs}>
-      <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <Popover modal={false}>
         <PopoverTrigger
           nativeButton={false}
+          openOnHover
+          delay={80}
+          closeDelay={140}
           render={
             node.profileHref ? (
               <Link href={node.profileHref} className={className} />
@@ -247,19 +275,13 @@ function PersonBox({
               <div className={className} />
             )
           }
-          onMouseEnter={showCard}
-          onMouseLeave={hideCard}
-          onFocus={showCard}
-          onBlur={hideCard}
         >
           {face}
         </PopoverTrigger>
         <PopoverContent
           side="top"
           sideOffset={8}
-          className="w-60 gap-3 p-3"
-          onMouseEnter={showCard}
-          onMouseLeave={hideCard}
+          className="w-60 gap-3 p-3 data-ending-style:pointer-events-none"
         >
           <div className="min-w-0">
             <p className="text-sm font-medium leading-tight">{node.name}</p>
@@ -479,7 +501,73 @@ function Forest({ roots }: { roots: OrganogramNode[] }) {
   );
 }
 
-export function OrganogramTree({ roots }: { roots: OrganogramNode[] }) {
+function FitBoard({ roots }: { roots: OrganogramNode[] }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [ready, setReady] = useState(false);
+
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    const board = boardRef.current;
+    if (!frame || !board) return;
+
+    let cancelled = false;
+
+    const fit = () => {
+      if (cancelled) return;
+      const pad = 16;
+      const availableW = Math.max(frame.clientWidth - pad * 2, 1);
+      const availableH = Math.max(frame.clientHeight - pad * 2, 1);
+      const naturalW = board.offsetWidth;
+      const naturalH = board.offsetHeight;
+      if (naturalW === 0 || naturalH === 0) return;
+      setScale(Math.min(availableW / naturalW, availableH / naturalH, 1));
+      setReady(true);
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(frame);
+    observer.observe(board);
+    void document.fonts?.ready.then(fit);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [roots]);
+
+  return (
+    <div ref={frameRef} className="relative min-h-0 flex-1 overflow-hidden">
+      <div
+        className="absolute top-1/2 left-1/2 transition-opacity duration-150"
+        style={{
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          opacity: ready ? 1 : 0,
+        }}
+      >
+        <div
+          ref={boardRef}
+          className="w-max"
+          style={{
+            background: `radial-gradient(ellipse 70% 50% at 50% 0%, ${tint(BLUE, 8)} 0%, transparent 70%)`,
+          }}
+        >
+          <Forest roots={roots} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function OrganogramTree({
+  roots,
+  variant = "pan",
+}: {
+  roots: OrganogramNode[];
+  variant?: OrganogramVariant;
+}) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -496,10 +584,24 @@ export function OrganogramTree({ roots }: { roots: OrganogramNode[] }) {
       <EmptyState
         surface
         kind="org"
-        title="No reporting lines"
-        description="None are visible for your account."
+        title={
+          variant === "fit"
+            ? "Reporting lines will appear here"
+            : "No reporting lines"
+        }
+        description={
+          variant === "fit" ? undefined : "None are visible for your account."
+        }
         className="min-h-0 flex-1 py-10"
       />
+    );
+  }
+
+  if (variant === "fit") {
+    return (
+      <OrganogramVariantContext.Provider value="fit">
+        <FitBoard roots={roots} />
+      </OrganogramVariantContext.Provider>
     );
   }
 

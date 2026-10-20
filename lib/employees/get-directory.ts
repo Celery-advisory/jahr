@@ -4,6 +4,7 @@ import {
   PERMISSION_TAGS_EMBED,
 } from "@/lib/auth/get-profile";
 import {
+  PERMISSION_TAG_LABELS,
   permissionTagsFromRows,
   type PermissionTagRow,
   type PermissionTagSlug,
@@ -116,12 +117,7 @@ type OrganogramSourceRow = Omit<
  * The service role is limited to chart columns so reporting-line RLS still
  * hides national IDs, tax numbers, and similar fields on `profiles`.
  */
-export async function getOrganogramEmployees(): Promise<DirectoryEmployee[]> {
-  const viewer = await getCurrentProfile();
-  if (!viewer) {
-    return [];
-  }
-
+async function loadActiveOrganogramEmployees(): Promise<DirectoryEmployee[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("profiles")
@@ -131,7 +127,7 @@ export async function getOrganogramEmployees(): Promise<DirectoryEmployee[]> {
 
   if (error || !data) {
     if (error) {
-      console.error("[getOrganogramEmployees]", error.message);
+      console.error("[loadActiveOrganogramEmployees]", error.message);
     }
     return [];
   }
@@ -145,6 +141,48 @@ export async function getOrganogramEmployees(): Promise<DirectoryEmployee[]> {
       leaving_reason: null,
     }),
   );
+}
+
+export async function getOrganogramEmployees(): Promise<DirectoryEmployee[]> {
+  const viewer = await getCurrentProfile();
+  if (!viewer) {
+    return [];
+  }
+
+  return loadActiveOrganogramEmployees();
+}
+
+function shareRoleLabel(node: OrganogramNode): string {
+  const title = node.jobTitle?.trim();
+  if (title) return title;
+  if (node.tags.length === 0) return "Team member";
+  return node.tags
+    .map((slug) => PERMISSION_TAG_LABELS[slug] ?? slug)
+    .join(", ");
+}
+
+/** Chart fields only. Emails, access tags, and profile links stay off the payload. */
+function forPublicShare(nodes: OrganogramNode[]): OrganogramNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    jobTitle: shareRoleLabel(node),
+    email: "",
+    tags: [],
+    gender: null,
+    role: "employee",
+    profileHref: null,
+    assistants: forPublicShare(node.assistants),
+    children: forPublicShare(node.children),
+  }));
+}
+
+/**
+ * Active reporting lines for the public organogram.
+ * No session is required. The service role reads chart columns only.
+ */
+export async function getShareOrganogram(): Promise<OrganogramNode[]> {
+  const employees = await loadActiveOrganogramEmployees();
+  return forPublicShare(buildOrganogram(employees));
 }
 
 const DIRECTORY_SELECT = `

@@ -63,7 +63,7 @@ export const getCurrentProfile = cache(async (): Promise<ProfileWithOrg | null> 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // Middleware already validated the session with getUser on this request.
+  // Middleware already refreshed and verified the session on this request.
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims.sub;
 

@@ -88,6 +88,31 @@ async function getDashboardPersonal(
   };
 }
 
+const TEAM_PROFILE_SELECT = `
+  id, first_name, last_name, preferred_name, job_title, avatar_url, gender, annual_leave_entitlement, date_of_birth, manager_id,
+  year_leave:leave_requests!leave_requests_employee_id_fkey ( type, status, start_date, working_days )
+`;
+
+const ADMIN_TEAM_PREVIEW_LIMIT = 12;
+
+/** Team profiles with this year's pending/approved leave embedded, in one round trip. */
+function getTeamProfiles(
+  supabase: ReturnType<typeof createClient>,
+  options: { viewerId: string; isOrgAdmin: boolean; year: number },
+) {
+  const base = supabase
+    .from("profiles")
+    .select(TEAM_PROFILE_SELECT)
+    .in("year_leave.status", ["pending", "approved"])
+    .gte("year_leave.start_date", `${options.year}-01-01`)
+    .lte("year_leave.start_date", `${options.year}-12-31`)
+    .order("first_name", { ascending: true });
+
+  return options.isOrgAdmin
+    ? base.eq("status", "active").limit(ADMIN_TEAM_PREVIEW_LIMIT)
+    : base.eq("manager_id", options.viewerId).neq("status", "terminated");
+}
+
 function greetingForHour(hour: number): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
@@ -208,23 +233,11 @@ export default async function DashboardPage() {
             .eq("manager_id", profile.id)
       : Promise.resolve({ count: 0 }),
     profile.isManager || admin
-      ? admin
-        ? supabase
-            .from("profiles")
-            .select(
-              "id, first_name, last_name, preferred_name, job_title, avatar_url, gender, annual_leave_entitlement, date_of_birth, manager_id",
-            )
-            .eq("status", "active")
-            .order("first_name", { ascending: true })
-            .limit(12)
-        : supabase
-            .from("profiles")
-            .select(
-              "id, first_name, last_name, preferred_name, job_title, avatar_url, gender, annual_leave_entitlement, date_of_birth, manager_id",
-            )
-            .eq("manager_id", profile.id)
-            .neq("status", "terminated")
-            .order("first_name", { ascending: true })
+      ? getTeamProfiles(supabase, {
+          viewerId: profile.id,
+          isOrgAdmin: admin,
+          year,
+        })
       : Promise.resolve({ data: [] }),
     admin ? getWorkforceInsights() : Promise.resolve(null),
   ]);
@@ -250,41 +263,18 @@ export default async function DashboardPage() {
 
   const holidays = holidaysResult.data;
   const teamProfiles = teamProfilesResult.data ?? [];
-  const teamIds = teamProfiles.map((person) => person.id);
   let team: DashboardTeamMember[] = [];
 
-  if (teamIds.length > 0 && (profile.isManager || admin)) {
-    const { data: yearRequests } = await supabase
-      .from("leave_requests")
-      .select("employee_id, type, status, start_date, working_days")
-      .in("employee_id", teamIds)
-      .in("status", ["pending", "approved"])
-      .gte("start_date", `${year}-01-01`)
-      .lte("start_date", `${year}-12-31`);
-
-    const byEmployee = new Map<
-      string,
-      Array<{
-        type: LeaveTypeId;
-        status: LeaveStatus;
-        startDate: string;
-        workingDays: number;
-      }>
-    >();
-
-    for (const request of yearRequests ?? []) {
-      const list = byEmployee.get(request.employee_id) ?? [];
-      list.push({
-        type: request.type as LeaveTypeId,
-        status: request.status as LeaveStatus,
-        startDate: request.start_date,
-        workingDays: Number(request.working_days),
-      });
-      byEmployee.set(request.employee_id, list);
-    }
-
+  if (teamProfiles.length > 0 && (profile.isManager || admin)) {
     team = teamProfiles.slice(0, 6).map((person) => {
-      const summary = summarizeLeaveBalance(byEmployee.get(person.id) ?? []);
+      const summary = summarizeLeaveBalance(
+        (person.year_leave ?? []).map((request) => ({
+          type: request.type as LeaveTypeId,
+          status: request.status as LeaveStatus,
+          startDate: request.start_date,
+          workingDays: Number(request.working_days),
+        })),
+      );
       return {
         id: person.id,
         name: displayName(person),

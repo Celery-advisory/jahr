@@ -5,7 +5,7 @@ import { AUTH_BYPASS } from "@/lib/auth/config";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_PATHS = ["/login", "/api/auth", "/org"];
 
 function copyCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
@@ -53,10 +53,10 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Must use getUser() (not getClaims) so the token is validated + refreshed.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims refreshes an expired session and verifies the JWT against the
+  // project's asymmetric signing key locally, so no Auth round trip per request.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ?? null;
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
