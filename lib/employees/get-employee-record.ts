@@ -126,7 +126,7 @@ export async function getEmployeeRecord(
       .select(
         `
         id, assigned_at, notes,
-        device:devices ( id, kind, name, serial_number )
+        device:devices ( id, kind, name, asset_tag, serial_number )
       `,
       )
       .eq("employee_id", targetId)
@@ -238,6 +238,7 @@ export async function getEmployeeRecord(
           id: row.id as string,
           kind: device.kind as AssetKind,
           label: device.name as string,
+          asset_tag: (device.asset_tag as string | null) ?? null,
           serial_number: (device.serial_number as string | null) ?? null,
           assigned_at: (row.assigned_at as string | null) ?? null,
           notes: (row.notes as string | null) ?? null,

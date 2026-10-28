@@ -24,7 +24,7 @@ export async function getDevices(): Promise<DeviceRecord[]> {
   const { data: devices, error } = await supabase
     .from("devices")
     .select(
-      "id, kind, name, serial_number, manufacturer, model, color, status, purchased_at, notes, created_at",
+      "id, kind, name, asset_tag, serial_number, manufacturer, model, color, status, purchased_at, notes, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -103,6 +103,7 @@ export async function getDevices(): Promise<DeviceRecord[]> {
       id: device.id,
       kind: device.kind as AssetKind,
       name: device.name,
+      asset_tag: device.asset_tag,
       serial_number: device.serial_number,
       manufacturer: device.manufacturer,
       model: device.model,

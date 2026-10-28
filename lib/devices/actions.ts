@@ -16,7 +16,7 @@ export interface DeviceActionResult {
 export interface CreateDeviceInput {
   kind: AssetKind;
   name: string;
-  serialNumber: string;
+  serialNumber?: string;
   manufacturer?: string;
   model?: string;
   color?: string;
@@ -33,14 +33,17 @@ export async function createDevice(
   }
 
   const name = input.name.trim();
-  const serialNumber = input.serialNumber.trim();
-  if (!name || !serialNumber) {
-    return { error: "Add name and serial number." };
+  // Everything except type and name is optional so older devices with
+  // incomplete records can still be logged.
+  const serialNumber = input.serialNumber?.trim() || null;
+  if (!name) {
+    return { error: "Add a device name." };
   }
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
+  // asset_tag is assigned by a database trigger.
   const { error } = await supabase.from("devices").insert({
     kind: input.kind,
     name,

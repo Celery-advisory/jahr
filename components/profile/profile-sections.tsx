@@ -302,6 +302,7 @@ export function ProfileSections({
                 className="rounded-md border border-border px-3 py-2 text-sm"
               >
                 <p className="font-medium">
+                  {asset.asset_tag ? `${asset.asset_tag} · ` : ""}
                   {ASSET_KIND_LABELS[asset.kind]} · {asset.label}
                 </p>
                 <p className="text-xs text-muted-foreground">

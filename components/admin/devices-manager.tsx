@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -69,6 +69,28 @@ function formatDate(iso: string | null): string {
   });
 }
 
+function OptionalLabel({ htmlFor, children }: { htmlFor: string; children: string }) {
+  return (
+    <Label htmlFor={htmlFor}>
+      {children}
+      <span className="font-normal text-muted-foreground">Optional</span>
+    </Label>
+  );
+}
+
+function matchesQuery(device: DeviceRecord, query: string): boolean {
+  if (!query) return true;
+  const holder = device.current_assignment?.employee;
+  return [
+    device.asset_tag,
+    device.name,
+    device.serial_number,
+    device.manufacturer,
+    device.model,
+    holder ? displayName(holder) : null,
+  ].some((value) => value?.toLowerCase().includes(query));
+}
+
 function statusTone(status: DeviceStatus): string {
   switch (status) {
     case "available":
@@ -97,6 +119,12 @@ export function DevicesManager({
   const [addOpen, setAddOpen] = useState(false);
   const [assignDeviceId, setAssignDeviceId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleDevices = devices.filter((device) =>
+    matchesQuery(device, normalizedQuery),
+  );
 
   const [kind, setKind] = useState<AssetKind>("laptop");
   const [name, setName] = useState("");
@@ -196,9 +224,23 @@ export function DevicesManager({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {devices.length} device{devices.length === 1 ? "" : "s"} in inventory
-        </p>
+        <div className="flex flex-1 flex-wrap items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search JA ID, name, serial, holder"
+              aria-label="Search devices"
+              className="pl-8"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {normalizedQuery
+              ? `${visibleDevices.length} of ${devices.length} devices`
+              : `${devices.length} device${devices.length === 1 ? "" : "s"} in inventory`}
+          </p>
+        </div>
 
         <Sheet open={addOpen} onOpenChange={setAddOpen}>
           <SheetTrigger
@@ -211,7 +253,8 @@ export function DevicesManager({
             <SheetHeader>
               <SheetTitle>Add device</SheetTitle>
               <SheetDescription>
-                Register a company device with its serial number.
+                Only type and name are required, so older devices with missing
+                records can still be logged. A JA ID is assigned on save.
               </SheetDescription>
             </SheetHeader>
 
@@ -252,7 +295,7 @@ export function DevicesManager({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="device-serial">Serial number</Label>
+                <OptionalLabel htmlFor="device-serial">Serial number</OptionalLabel>
                 <Input
                   id="device-serial"
                   value={serialNumber}
@@ -264,7 +307,7 @@ export function DevicesManager({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="device-manufacturer">Manufacturer</Label>
+                  <OptionalLabel htmlFor="device-manufacturer">Manufacturer</OptionalLabel>
                   <Input
                     id="device-manufacturer"
                     value={manufacturer}
@@ -273,7 +316,7 @@ export function DevicesManager({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="device-model">Model</Label>
+                  <OptionalLabel htmlFor="device-model">Model</OptionalLabel>
                   <Input
                     id="device-model"
                     value={model}
@@ -285,7 +328,7 @@ export function DevicesManager({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="device-color">Colour</Label>
+                  <OptionalLabel htmlFor="device-color">Colour</OptionalLabel>
                   <Input
                     id="device-color"
                     value={color}
@@ -294,7 +337,7 @@ export function DevicesManager({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="device-purchased">Purchased</Label>
+                  <OptionalLabel htmlFor="device-purchased">Purchased</OptionalLabel>
                   <DatePicker
                     id="device-purchased"
                     value={purchasedAt}
@@ -305,7 +348,7 @@ export function DevicesManager({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="device-notes">Notes</Label>
+                <OptionalLabel htmlFor="device-notes">Notes</OptionalLabel>
                 <Textarea
                   id="device-notes"
                   value={notes}
@@ -322,7 +365,7 @@ export function DevicesManager({
               ) : null}
               <Button
                 onClick={handleCreate}
-                disabled={pending || !name.trim() || !serialNumber.trim()}
+                disabled={pending || !name.trim()}
                 className="gap-2"
               >
                 {pending ? <Spinner /> : null}
@@ -347,7 +390,12 @@ export function DevicesManager({
         />
       ) : (
         <ul className="overflow-hidden rounded-xl border border-border bg-card">
-          {devices.map((device) => {
+          {visibleDevices.length === 0 ? (
+            <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No devices match &ldquo;{query.trim()}&rdquo;.
+            </li>
+          ) : null}
+          {visibleDevices.map((device) => {
             const assignee = device.current_assignment?.employee;
             const expanded = expandedId === device.id;
 
@@ -359,6 +407,9 @@ export function DevicesManager({
                 <div className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-xs font-medium text-foreground">
+                        {device.asset_tag}
+                      </span>
                       <p className="text-sm font-medium tracking-tight">
                         {device.name}
                       </p>
@@ -373,7 +424,7 @@ export function DevicesManager({
                       </Badge>
                     </div>
                     <p className="font-mono text-xs text-muted-foreground">
-                      {device.serial_number}
+                      {device.serial_number ?? "No serial"}
                       {device.manufacturer || device.model
                         ? ` · ${[device.manufacturer, device.model].filter(Boolean).join(" ")}`
                         : ""}
@@ -580,7 +631,7 @@ export function DevicesManager({
             <SheetTitle>Assign device</SheetTitle>
             <SheetDescription>
               {assignTarget
-                ? `${assignTarget.name} · ${assignTarget.serial_number}`
+                ? `${assignTarget.asset_tag} · ${assignTarget.name}`
                 : "Choose who should receive this device."}
             </SheetDescription>
           </SheetHeader>
