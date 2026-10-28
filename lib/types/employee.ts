@@ -116,6 +116,7 @@ export interface EmployeeAsset {
   id: string;
   kind: AssetKind;
   label: string;
+  asset_tag: string | null;
   serial_number: string | null;
   assigned_at: string | null;
   notes: string | null;

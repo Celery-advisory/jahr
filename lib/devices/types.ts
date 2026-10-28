@@ -43,7 +43,9 @@ export interface DeviceRecord {
   id: string;
   kind: AssetKind;
   name: string;
-  serial_number: string;
+  /** Permanent JA ID assigned by the database, e.g. JA-LT-0001. */
+  asset_tag: string;
+  serial_number: string | null;
   manufacturer: string | null;
   model: string | null;
   color: string | null;
