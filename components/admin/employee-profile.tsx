@@ -240,6 +240,7 @@ export function EmployeeProfile({
                 <OffboardEmployeeDialog
                   employeeId={profile.id}
                   employeeName={name}
+                  devices={record.assets}
                 />
               ) : null}
             </div>
@@ -563,7 +564,7 @@ export function EmployeeProfile({
                   >
                     <p className="font-medium">
                       {asset.asset_tag ? `${asset.asset_tag} · ` : ""}
-                      {ASSET_KIND_LABELS[asset.kind]} · {asset.label}
+                      {asset.category_name ?? ASSET_KIND_LABELS[asset.kind]} · {asset.label}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {asset.serial_number ?? "No serial"}
