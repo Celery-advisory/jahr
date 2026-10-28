@@ -14,6 +14,14 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import {
+  SortHeader,
+  SortSelect,
+  compareValues,
+  nextSort,
+  type Sort,
+  type SortDirection,
+} from "@/components/admin/list-sort";
 import { CategoryManagerSheet } from "@/components/devices/category-manager-sheet";
 import { DeviceActions } from "@/components/devices/device-actions";
 import { DeviceFormSheet } from "@/components/devices/device-form-sheet";
@@ -44,7 +52,8 @@ import { displayName } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
 
 /** "active" = everything except retired, the default view. */
-type StatusFilter = "active" | "all" | DeviceStatus | "former_staff" | "warranty";
+type StatusFilter =
+  "active" | "all" | DeviceStatus | "former_staff" | "warranty";
 
 const STATUS_FILTER_ITEMS: { value: StatusFilter; label: string }[] = [
   { value: "active", label: "All in service" },
@@ -53,9 +62,67 @@ const STATUS_FILTER_ITEMS: { value: StatusFilter; label: string }[] = [
     label: DEVICE_STATUS_LABELS[status],
   })),
   { value: "former_staff", label: "With former staff" },
-  { value: "warranty", label: `Warranty ending ≤ ${WARRANTY_WARNING_DAYS} days` },
+  {
+    value: "warranty",
+    label: `Warranty ending ≤ ${WARRANTY_WARNING_DAYS} days`,
+  },
   { value: "all", label: "Everything, incl. retired" },
 ];
+
+type SortKey =
+  "device" | "holder" | "status" | "location" | "warranty" | "added";
+
+const SORT_ITEMS: { value: `${SortKey}:${SortDirection}`; label: string }[] = [
+  { value: "added:desc", label: "Newest first" },
+  { value: "added:asc", label: "Oldest first" },
+  { value: "device:asc", label: "JA ID ascending" },
+  { value: "device:desc", label: "JA ID descending" },
+  { value: "holder:asc", label: "Holder A–Z" },
+  { value: "holder:desc", label: "Holder Z–A" },
+  { value: "status:asc", label: "Status: available first" },
+  { value: "status:desc", label: "Status: retired first" },
+  { value: "location:asc", label: "Location A–Z" },
+  { value: "location:desc", label: "Location Z–A" },
+  { value: "warranty:asc", label: "Warranty ending soonest" },
+  { value: "warranty:desc", label: "Warranty ending latest" },
+];
+
+function holderSortName(device: DeviceRecord): string | null {
+  const employee = device.current_assignment?.employee;
+  return employee ? displayName(employee) : null;
+}
+
+function sortValue(device: DeviceRecord, key: SortKey): string | number | null {
+  switch (key) {
+    case "device":
+      return device.asset_tag;
+    case "holder":
+      return holderSortName(device);
+    case "status":
+      return DEVICE_STATUSES.indexOf(device.status);
+    case "location":
+      return device.location;
+    case "warranty":
+      return device.warranty_expires_at;
+    case "added":
+      return device.created_at;
+  }
+}
+
+/** Sorts by the chosen column, blanks last, then newest first. */
+function compareDevices(
+  a: DeviceRecord,
+  b: DeviceRecord,
+  sort: Sort<SortKey>,
+): number {
+  return (
+    compareValues(
+      sortValue(a, sort.key),
+      sortValue(b, sort.key),
+      sort.direction,
+    ) || compareValues(a.created_at, b.created_at, "desc")
+  );
+}
 
 function matchesStatus(device: DeviceRecord, filter: StatusFilter): boolean {
   switch (filter) {
@@ -66,7 +133,10 @@ function matchesStatus(device: DeviceRecord, filter: StatusFilter): boolean {
     case "former_staff":
       return heldByFormerStaff(device);
     case "warranty":
-      return device.status !== "retired" && warrantyState(device.warranty_expires_at) === "expiring";
+      return (
+        device.status !== "retired" &&
+        warrantyState(device.warranty_expires_at) === "expiring"
+      );
     default:
       return device.status === filter;
   }
@@ -116,7 +186,9 @@ function SummaryTile({
       aria-pressed={active}
       className={cn(
         "flex h-full flex-col gap-2 rounded-xl border p-3.5 text-left transition-[border-color,box-shadow] duration-150 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-        active ? "border-transparent ring-2" : "border-border hover:border-transparent",
+        active
+          ? "border-transparent ring-2"
+          : "border-border hover:border-transparent",
       )}
       style={{
         background: `linear-gradient(165deg, ${wash(accent, 14)} 0%, #ffffff 58%)`,
@@ -126,7 +198,9 @@ function SummaryTile({
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-medium tracking-tight tabular-nums">{value}</p>
+          <p className="text-xl font-medium tracking-tight tabular-nums">
+            {value}
+          </p>
         </div>
         <span
           className="flex size-8 shrink-0 items-center justify-center rounded-md"
@@ -158,7 +232,9 @@ function Holder({ device }: { device: DeviceRecord }) {
         {employee.status === "terminated" ? (
           <p className="text-xs text-destructive">Left the company</p>
         ) : employee.job_title ? (
-          <p className="truncate text-xs text-muted-foreground">{employee.job_title}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {employee.job_title}
+          </p>
         ) : null}
       </div>
     </div>
@@ -179,6 +255,12 @@ export function DevicesOverview({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [addOpen, setAddOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [sort, setSort] = useState<Sort<SortKey>>({
+    key: "added",
+    direction: "desc",
+  });
+  const toggleSort = (key: SortKey) =>
+    setSort((current) => nextSort(current, key));
 
   const inService = devices.filter((device) => device.status !== "retired");
   const count = (filter: StatusFilter) =>
@@ -188,12 +270,14 @@ export function DevicesOverview({
     setStatusFilter((current) => (current === filter ? "active" : filter));
 
   const normalizedQuery = query.trim().toLowerCase();
-  const visible = devices.filter(
-    (device) =>
-      matchesStatus(device, statusFilter) &&
-      (categoryId === "all" || device.category.id === categoryId) &&
-      matchesQuery(device, normalizedQuery),
-  );
+  const visible = devices
+    .filter(
+      (device) =>
+        matchesStatus(device, statusFilter) &&
+        (categoryId === "all" || device.category.id === categoryId) &&
+        matchesQuery(device, normalizedQuery),
+    )
+    .sort((a, b) => compareDevices(a, b, sort));
   const filtered =
     normalizedQuery !== "" || categoryId !== "all" || statusFilter !== "active";
 
@@ -208,12 +292,48 @@ export function DevicesOverview({
     icon: LucideIcon;
     accent: string;
   }[] = [
-    { filter: "active", label: "In service", hint: "Everything not retired", icon: Boxes, accent: "#475467" },
-    { filter: "assigned", label: "Assigned", hint: "With an employee", icon: UserCheck, accent: "#0070F3" },
-    { filter: "available", label: "Available", hint: "In stock, ready to issue", icon: PackageCheck, accent: "#16A34A" },
-    { filter: "repair", label: "In repair", hint: "Out for fixing", icon: Wrench, accent: "#D97706" },
-    { filter: "warranty", label: "Warranty ending", hint: `Within ${WARRANTY_WARNING_DAYS} days`, icon: ShieldAlert, accent: "#B45309" },
-    { filter: "former_staff", label: "With former staff", hint: "Left without returning", icon: UserX, accent: "#DC2626" },
+    {
+      filter: "active",
+      label: "In service",
+      hint: "Everything not retired",
+      icon: Boxes,
+      accent: "#475467",
+    },
+    {
+      filter: "assigned",
+      label: "Assigned",
+      hint: "With an employee",
+      icon: UserCheck,
+      accent: "#0070F3",
+    },
+    {
+      filter: "available",
+      label: "Available",
+      hint: "In stock, ready to issue",
+      icon: PackageCheck,
+      accent: "#16A34A",
+    },
+    {
+      filter: "repair",
+      label: "In repair",
+      hint: "Out for fixing",
+      icon: Wrench,
+      accent: "#D97706",
+    },
+    {
+      filter: "warranty",
+      label: "Warranty ending",
+      hint: `Within ${WARRANTY_WARNING_DAYS} days`,
+      icon: ShieldAlert,
+      accent: "#B45309",
+    },
+    {
+      filter: "former_staff",
+      label: "With former staff",
+      hint: "Left without returning",
+      icon: UserX,
+      accent: "#DC2626",
+    },
   ];
 
   return (
@@ -223,7 +343,9 @@ export function DevicesOverview({
           <SummaryTile
             key={tile.filter}
             label={tile.label}
-            value={tile.filter === "active" ? inService.length : count(tile.filter)}
+            value={
+              tile.filter === "active" ? inService.length : count(tile.filter)
+            }
             hint={tile.hint}
             icon={tile.icon}
             accent={tile.accent}
@@ -265,7 +387,11 @@ export function DevicesOverview({
           />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-1.5" onClick={() => setCategoriesOpen(true)}>
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setCategoriesOpen(true)}
+          >
             <Settings2 className="size-4" />
             Categories
           </Button>
@@ -315,11 +441,34 @@ export function DevicesOverview({
             <table className="w-full text-sm">
               <thead className="border-b border-[#E7ECF2] bg-[#F6F8FB] text-left text-xs text-[#667085]">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Device</th>
-                  <th className="px-4 py-2.5 font-medium">Holder</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Location</th>
-                  <th className="px-4 py-2.5 font-medium">Warranty</th>
+                  {(
+                    [
+                      ["device", "Device"],
+                      ["holder", "Holder"],
+                      ["status", "Status"],
+                      ["location", "Location"],
+                      ["warranty", "Warranty"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <th
+                      key={key}
+                      className="px-4 py-2.5 font-medium"
+                      aria-sort={
+                        sort.key === key
+                          ? sort.direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
+                      <SortHeader
+                        label={label}
+                        sortKey={key}
+                        sort={sort}
+                        onSort={toggleSort}
+                      />
+                    </th>
+                  ))}
                   <th className="w-12 px-2 py-2.5">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -344,7 +493,10 @@ export function DevicesOverview({
                           <p className="truncate text-xs text-muted-foreground">
                             {deviceSubtitle(device)}
                             {device.serial_number ? (
-                              <span className="font-mono"> · {device.serial_number}</span>
+                              <span className="font-mono">
+                                {" "}
+                                · {device.serial_number}
+                              </span>
                             ) : null}
                           </p>
                         </div>
@@ -363,12 +515,20 @@ export function DevicesOverview({
                       <WarrantyText expiresAt={device.warranty_expires_at} />
                     </td>
                     <td className="px-2 py-3 text-right">
-                      <DeviceActions device={device} employees={employees} options={options} />
+                      <DeviceActions
+                        device={device}
+                        employees={employees}
+                        options={options}
+                      />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="lg:hidden">
+            <SortSelect sort={sort} onSortChange={setSort} items={SORT_ITEMS} />
           </div>
 
           <ul className="flex flex-col gap-2 lg:hidden">
@@ -383,7 +543,10 @@ export function DevicesOverview({
                       <AssetTag tag={device.asset_tag} />
                       <StatusBadge status={device.status} />
                       {heldByFormerStaff(device) ? (
-                        <Badge variant="outline" className="rounded-md border-transparent bg-destructive/10 font-normal text-destructive">
+                        <Badge
+                          variant="outline"
+                          className="rounded-md border-transparent bg-destructive/10 font-normal text-destructive"
+                        >
                           Not returned
                         </Badge>
                       ) : null}
@@ -401,7 +564,11 @@ export function DevicesOverview({
                       <Holder device={device} />
                     </div>
                   </div>
-                  <DeviceActions device={device} employees={employees} options={options} />
+                  <DeviceActions
+                    device={device}
+                    employees={employees}
+                    options={options}
+                  />
                 </div>
               </li>
             ))}
