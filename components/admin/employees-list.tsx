@@ -3,9 +3,27 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, Mars, MoreHorizontal, Venus, Wallet } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Eye,
+  Mars,
+  MoreHorizontal,
+  Search,
+  Venus,
+  Wallet,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyIllustration, EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
@@ -21,6 +39,79 @@ import { displayName } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "active";
+type SortKey = "name" | "position" | "department" | "status";
+type SortDirection = "asc" | "desc";
+type Sort = { key: SortKey; direction: SortDirection };
+
+const SORT_ITEMS: { value: string; label: string }[] = [
+  { value: "name:asc", label: "Name A–Z" },
+  { value: "name:desc", label: "Name Z–A" },
+  { value: "position:asc", label: "Position A–Z" },
+  { value: "position:desc", label: "Position Z–A" },
+  { value: "department:asc", label: "Department A–Z" },
+  { value: "department:desc", label: "Department Z–A" },
+  { value: "status:asc", label: "Status: active first" },
+  { value: "status:desc", label: "Status: left first" },
+];
+
+const STATUS_ORDER: Record<EmploymentStatus, number> = {
+  active: 0,
+  onboarding: 1,
+  inactive: 2,
+  terminated: 3,
+};
+
+const GRID_COLUMNS =
+  "md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_8.5rem_7rem]";
+
+function departmentOf(employee: DirectoryEmployee): string {
+  return (
+    employee.department_name ?? employee.business_unit_name ?? "JA Group"
+  );
+}
+
+function searchText(employee: DirectoryEmployee): string {
+  return [
+    displayName(employee),
+    employee.first_name,
+    employee.last_name,
+    employee.email,
+    employee.job_title,
+    departmentOf(employee),
+    employee.employee_number,
+    employee.manager_name,
+    employee.office_location,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+
+/** Sorts by the chosen column, keeps blanks last, then falls back to name. */
+function compareEmployees(
+  a: DirectoryEmployee,
+  b: DirectoryEmployee,
+  sort: Sort,
+): number {
+  const byName = collator.compare(displayName(a), displayName(b));
+  const sign = sort.direction === "asc" ? 1 : -1;
+
+  if (sort.key === "name") return byName * sign;
+  if (sort.key === "status") {
+    const diff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    return diff !== 0 ? diff * sign : byName;
+  }
+
+  const left = sort.key === "position" ? a.job_title : departmentOf(a);
+  const right = sort.key === "position" ? b.job_title : departmentOf(b);
+  if (!left && !right) return byName;
+  if (!left) return 1;
+  if (!right) return -1;
+  const diff = collator.compare(left, right);
+  return diff !== 0 ? diff * sign : byName;
+}
 
 function statusLabel(
   status: EmploymentStatus,
@@ -72,6 +163,8 @@ export function EmployeesList({
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort>({ key: "name", direction: "asc" });
   const isAlumni = variant === "alumni";
 
   const stats = useMemo(() => {
@@ -96,13 +189,31 @@ export function EmployeesList({
     };
   }, [employees]);
 
-  const visible = useMemo(
-    () =>
-      isAlumni
-        ? employees
-        : employees.filter((row) => matchesFilter(row, filter)),
-    [employees, filter, isAlumni],
+  const indexed = useMemo(
+    () => employees.map((row) => ({ row, text: searchText(row) })),
+    [employees],
   );
+
+  const visible = useMemo(() => {
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return indexed
+      .filter(({ row, text }) => {
+        if (!isAlumni && !matchesFilter(row, filter)) return false;
+        return terms.every((term) => text.includes(term));
+      })
+      .map(({ row }) => row)
+      .sort((a, b) => compareEmployees(a, b, sort));
+  }, [indexed, filter, isAlumni, query, sort]);
+
+  function toggleSort(key: SortKey) {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" },
+    );
+  }
+
+  const sortValue = `${sort.key}:${sort.direction}`;
 
   if (employees.length === 0) {
     if (isAlumni) {
@@ -249,12 +360,56 @@ export function EmployeesList({
         </div>
       </div>
 
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative sm:max-w-sm sm:flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search name, email, position, department"
+            aria-label="Search people"
+            className="pl-8"
+          />
+        </div>
+        <div className="md:hidden">
+          <Select
+            value={sortValue}
+            onValueChange={(next) => {
+              if (next === null) return;
+              const [key, direction] = String(next).split(":");
+              setSort({
+                key: key as SortKey,
+                direction: direction as SortDirection,
+              });
+            }}
+            items={SORT_ITEMS}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label="Sort by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false} align="start">
+              {SORT_ITEMS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_8.5rem_7rem] gap-4 border-b border-[#E7ECF2] bg-[#F6F8FB] px-4 py-2.5 text-left text-xs font-medium text-[#667085] md:grid">
-          <span>Full name</span>
-          <span>Position</span>
-          <span>Department</span>
-          <span>Status</span>
+        <div
+          className={cn(
+            "hidden gap-4 border-b border-[#E7ECF2] bg-[#F6F8FB] px-4 py-2.5 text-left text-xs font-medium text-[#667085] md:grid",
+            GRID_COLUMNS,
+          )}
+        >
+          <SortHeader label="Full name" sortKey="name" sort={sort} onSort={toggleSort} />
+          <SortHeader label="Position" sortKey="position" sort={sort} onSort={toggleSort} />
+          <SortHeader label="Department" sortKey="department" sort={sort} onSort={toggleSort} />
+          <SortHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} />
           <span>Actions</span>
         </div>
 
@@ -262,7 +417,11 @@ export function EmployeesList({
           <EmptyState
             size="compact"
             kind="search"
-            title="No people in this group"
+            title={
+              query.trim()
+                ? `No one matches "${query.trim()}"`
+                : "No people in this group"
+            }
           />
         ) : (
           <ul className="divide-y divide-border">
@@ -273,7 +432,10 @@ export function EmployeesList({
               return (
                 <li
                   key={employee.id}
-                  className="grid gap-3 px-4 py-3.5 text-left md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_8.5rem_7rem] md:items-center md:gap-4"
+                  className={cn(
+                    "grid gap-3 px-4 py-3.5 text-left md:items-center md:gap-4",
+                    GRID_COLUMNS,
+                  )}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <UserAvatar
@@ -299,9 +461,7 @@ export function EmployeesList({
 
                   <p className="truncate text-sm text-muted-foreground">
                     <span className="md:hidden text-xs">Dept · </span>
-                    {employee.department_name ??
-                      employee.business_unit_name ??
-                      "JA Group"}
+                    {departmentOf(employee)}
                   </p>
 
                   <div>
@@ -375,5 +535,43 @@ export function EmployeesList({
         </div>
       </div>
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: Sort;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort.key === sortKey;
+  return (
+    <span>
+      <button
+        type="button"
+        aria-label={`Sort by ${label.toLowerCase()}`}
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "inline-flex items-center gap-1 text-xs font-medium hover:text-foreground",
+          active && "text-foreground",
+        )}
+      >
+        {label}
+        {active ? (
+          sort.direction === "asc" ? (
+            <ChevronUp className="size-3.5" />
+          ) : (
+            <ChevronDown className="size-3.5" />
+          )
+        ) : (
+          <ChevronsUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    </span>
   );
 }
