@@ -11,14 +11,14 @@ import {
 } from "@/components/communications/mention-list";
 
 export function createMentionSuggestion(
-  getCandidates: () => MentionCandidate[],
+  candidatesRef: { readonly current: MentionCandidate[] },
 ): Omit<SuggestionOptions<MentionCandidate>, "editor"> {
   return {
     char: "@",
     allowSpaces: false,
     items: ({ query }) => {
       const normalized = query.trim().toLowerCase();
-      return getCandidates()
+      return candidatesRef.current
         .filter((candidate) => {
           if (!normalized) return true;
           return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -48,11 +48,18 @@ export function BusinessUnitSheet({
   const [description, setDescription] = useState("");
   const editing = unit !== null;
 
-  useEffect(() => {
-    if (!open) return;
-    setName(unit?.name ?? "");
-    setDescription(unit?.description ?? "");
-  }, [open, unit?.id, unit?.name, unit?.description]);
+  // Reset the fields whenever the sheet opens or the unit changes.
+  const formKey = open
+    ? JSON.stringify([unit?.id, unit?.name, unit?.description])
+    : null;
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
+  if (formKey !== syncedKey) {
+    setSyncedKey(formKey);
+    if (open) {
+      setName(unit?.name ?? "");
+      setDescription(unit?.description ?? "");
+    }
+  }
 
   function handleSubmit() {
     const trimmed = name.trim();
@@ -152,10 +159,17 @@ export function DepartmentSheet({
   const [name, setName] = useState("");
   const editing = department !== null;
 
-  useEffect(() => {
-    if (!open) return;
-    setName(department?.name ?? "");
-  }, [open, department?.id, department?.name]);
+  // Reset the field whenever the sheet opens or the department changes.
+  const formKey = open
+    ? JSON.stringify([department?.id, department?.name])
+    : null;
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
+  if (formKey !== syncedKey) {
+    setSyncedKey(formKey);
+    if (open) {
+      setName(department?.name ?? "");
+    }
+  }
 
   function handleSubmit() {
     const trimmed = name.trim();

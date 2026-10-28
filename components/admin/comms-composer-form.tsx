@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -198,14 +198,16 @@ export function CommsComposerForm({
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { pending, run } = useAsyncAction();
-  const [counting, setCounting] = useState(false);
+  // The count is stale until the request for the current selection lands.
+  const audienceKey = JSON.stringify([businessUnitIds, workTypes]);
+  const [countedKey, setCountedKey] = useState<string | null>(null);
+  const counting = countedKey !== audienceKey;
 
   const wholeCompany =
     businessUnitIds.length === 0 && workTypes.length === 0;
 
   useEffect(() => {
     let cancelled = false;
-    setCounting(true);
     void previewAnnouncementAudience({
       businessUnitIds,
       workTypes,
@@ -214,12 +216,12 @@ export function CommsComposerForm({
       if (!result.error) {
         setAudienceCount(result.count);
       }
-      setCounting(false);
+      setCountedKey(audienceKey);
     });
     return () => {
       cancelled = true;
     };
-  }, [businessUnitIds, workTypes]);
+  }, [audienceKey, businessUnitIds, workTypes]);
 
   const selectedUnitNames = useMemo(() => {
     if (businessUnitIds.length === 0) {

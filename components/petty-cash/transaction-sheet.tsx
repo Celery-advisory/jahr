@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import type {
   PettyCashSettings,
   PettyCashVendor,
 } from "@/lib/petty-cash/types";
+import { useResetOnChange } from "@/lib/hooks/use-reset-on-change";
 
 const EXPENSE_TYPES: TransactionType[] = [
   "expense",
@@ -89,7 +90,10 @@ export function TransactionSheet({
   const [notes, setNotes] = useState("");
   const [exceptionRequested, setExceptionRequested] = useState(false);
 
-  useEffect(() => {
+  // Bumping the key remounts the file input, clearing any chosen receipt.
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  useResetOnChange([open, mode, defaultFundId, funds], () => {
     if (!open) return;
     const active = funds.filter((item) => item.status === "active");
     const first =
@@ -106,8 +110,8 @@ export function TransactionSheet({
     setReference("");
     setNotes("");
     setExceptionRequested(false);
-    if (fileRef.current) fileRef.current.value = "";
-  }, [open, mode, defaultFundId, funds]);
+    setFileInputKey((key) => key + 1);
+  });
 
   const fund = activeFunds.find((item) => item.id === fundId) ?? null;
   const parsedAmount = parseLooseAmount(amount);
@@ -320,6 +324,7 @@ export function TransactionSheet({
               </Field>
               <Field label="Receipt">
                 <Input
+                  key={fileInputKey}
                   ref={fileRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"

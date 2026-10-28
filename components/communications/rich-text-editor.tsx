@@ -46,9 +46,12 @@ export function RichTextEditor({
   "aria-label": ariaLabel = "Message body",
 }: RichTextEditorProps) {
   const mentionCandidatesRef = useRef(mentionCandidates);
-  mentionCandidatesRef.current = mentionCandidates;
   const onSubmitShortcutRef = useRef(onSubmitShortcut);
-  onSubmitShortcutRef.current = onSubmitShortcut;
+
+  useEffect(() => {
+    mentionCandidatesRef.current = mentionCandidates;
+    onSubmitShortcutRef.current = onSubmitShortcut;
+  }, [mentionCandidates, onSubmitShortcut]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -80,9 +83,9 @@ export function RichTextEditor({
           class:
             "rounded-sm bg-[color-mix(in_srgb,#0070F3_12%,white)] px-1 py-0.5 font-medium text-[#0B4FBF]",
         },
-        suggestion: createMentionSuggestion(
-          () => mentionCandidatesRef.current,
-        ),
+        // The ref is only read inside TipTap's `items` callback, never during render.
+        // eslint-disable-next-line react-hooks/refs
+        suggestion: createMentionSuggestion(mentionCandidatesRef),
       }),
     ],
     content: value ?? EMPTY_DOC,

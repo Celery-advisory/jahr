@@ -224,12 +224,13 @@ export function DashboardView({
   isAdmin: boolean;
 }) {
   const enter = usePostLoginEntrance();
-  const [metersOn, setMetersOn] = useState(true);
+  // On the post-login entrance, meters start empty and fill a beat later.
+  const [metersReady, setMetersReady] = useState(false);
+  const metersOn = !enter || metersReady;
 
   useEffect(() => {
     if (!enter) return;
-    setMetersOn(false);
-    const timer = window.setTimeout(() => setMetersOn(true), 40);
+    const timer = window.setTimeout(() => setMetersReady(true), 40);
     return () => window.clearTimeout(timer);
   }, [enter]);
 

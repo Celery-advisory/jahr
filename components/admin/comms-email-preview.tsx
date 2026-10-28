@@ -41,8 +41,12 @@ export function CommsEmailPreview({
 
   const draftSignature = useMemo(() => JSON.stringify(draft), [draft]);
   const draftRef = useRef(draft);
-  draftRef.current = draft;
   const requestId = useRef(0);
+
+  // Declared before the preview effect so the debounced request reads the latest draft.
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     if (!open) return;

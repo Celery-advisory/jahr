@@ -84,11 +84,13 @@ function SpendRing({
   currency: string;
   categories: CategorySpend[];
 }) {
-  let cursor = 0;
-  const stops = categories.map((category) => {
-    const start = cursor;
-    cursor += total > 0 ? category.total / total : 0;
-    return `${categoryColor(category.name)} ${start * 100}% ${cursor * 100}%`;
+  const shares = categories.map((category) =>
+    total > 0 ? category.total / total : 0,
+  );
+  const stops = categories.map((category, index) => {
+    const start = shares.slice(0, index).reduce((sum, share) => sum + share, 0);
+    const end = start + shares[index];
+    return `${categoryColor(category.name)} ${start * 100}% ${end * 100}%`;
   });
 
   return (

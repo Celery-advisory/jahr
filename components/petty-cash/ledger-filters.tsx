@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Download, Search } from "lucide-react";
@@ -25,6 +25,7 @@ import {
   type PettyCashFund,
 } from "@/lib/petty-cash/types";
 import { cn } from "@/lib/utils";
+import { useResetOnChange } from "@/lib/hooks/use-reset-on-change";
 
 export function LedgerFiltersBar({
   filters,
@@ -166,9 +167,8 @@ function DateRangeFilter({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>();
 
-  useEffect(() => {
-    setDraft(undefined);
-  }, [filters.from, filters.to]);
+  // Drop any half-picked range once the applied filters change.
+  useResetOnChange([filters.from, filters.to], () => setDraft(undefined));
 
   const applied: DateRange | undefined =
     filters.from || filters.to

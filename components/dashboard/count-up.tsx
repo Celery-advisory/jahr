@@ -21,25 +21,20 @@ export function CountUp({
   const frame = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setDisplay(value);
-      return;
-    }
+    if (!enabled) return;
 
+    // Reduced motion jumps straight to the final value on the first frame.
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    if (prefersReducedMotion) {
-      setDisplay(value);
-      return;
-    }
+    const duration = prefersReducedMotion ? 0 : durationMs;
 
     const start = performance.now();
     const from = 0;
     const to = value;
 
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
+      const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
       const next = from + (to - from) * easeOutCubic(t);
       setDisplay(Math.round(next));
       if (t < 1) {
@@ -55,7 +50,7 @@ export function CountUp({
 
   return (
     <span className={className} style={{ fontVariantNumeric: "tabular-nums" }}>
-      {display}
+      {enabled ? display : value}
     </span>
   );
 }

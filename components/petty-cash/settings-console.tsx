@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Pencil, Shield, Store, Tags, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -11,6 +11,7 @@ import { SettingsPolicy } from "@/components/petty-cash/settings-policy";
 import { SettingsVendors } from "@/components/petty-cash/settings-vendors";
 import type { PettyCashBundle } from "@/lib/petty-cash/types";
 import { cn } from "@/lib/utils";
+import { useResetOnChange } from "@/lib/hooks/use-reset-on-change";
 
 function wash(color: string, percent: number): string {
   return `color-mix(in srgb, ${color} ${percent}%, white)`;
@@ -38,10 +39,10 @@ export function PettyCashSettingsConsole({
   const [area, setArea] = useState(initialArea);
   const [policyEditing, setPolicyEditing] = useState(false);
 
-  useEffect(() => {
+  useResetOnChange([initialArea], () => {
     setArea(initialArea);
     if (initialArea !== "policy") setPolicyEditing(false);
-  }, [initialArea]);
+  });
 
   function select(next: SettingsArea, editPolicy = false) {
     setArea(next);

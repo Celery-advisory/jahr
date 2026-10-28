@@ -324,6 +324,8 @@ export function PayslipDocument({
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
+          {/* react-pdf's Image has no alt prop; PDFs carry no image alt text. */}
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <Image src={logoPath} style={styles.logo} />
           <View style={styles.companyBlock}>
             <Text style={styles.companyName}>{COMPANY.name}</Text>

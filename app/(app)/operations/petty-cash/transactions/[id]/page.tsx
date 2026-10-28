@@ -117,6 +117,9 @@ export default async function PettyCashTransactionPage({
             {receipts.map((receipt) => (
               <li key={receipt.id} className="flex flex-col gap-2">
                 {receipt.fileType.startsWith("image/") ? (
+                  // Plain <img>: the receipt route needs the viewer's auth
+                  // cookies, which the next/image optimizer would not forward.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={`/api/petty-cash/receipts/${receipt.id}`}
                     alt={receipt.fileName}

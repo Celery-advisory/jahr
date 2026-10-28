@@ -12,12 +12,18 @@ export type OtpResult =
   | { ok: true }
   | { ok: false; error: string; status?: number };
 
+/**
+ * Generic outcome for unknown, inactive, and wrong-code cases so responses
+ * never reveal which emails have accounts.
+ */
+const INVALID_CODE_ERROR = "Invalid or expired code. Request a new one.";
+
 function otpPepper(): string {
-  return (
-    process.env.AUTH_OTP_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "jahr-dev-otp-pepper"
-  );
+  const secret = process.env.AUTH_OTP_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_OTP_SECRET is not set.");
+  }
+  return secret;
 }
 
 export function hashOtp(email: string, code: string): string {
@@ -59,12 +65,9 @@ export async function issueLoginOtp(emailInput: string): Promise<OtpResult> {
     return { ok: false, error: profileError.message, status: 500 };
   }
 
+  // Same response as a real send, so the form cannot be used to probe accounts.
   if (!profile || profile.status !== "active") {
-    return {
-      ok: false,
-      error: "No account found for that email. Ask an admin to invite you.",
-      status: 404,
-    };
+    return { ok: true };
   }
 
   const { data: latest } = await admin
@@ -166,11 +169,7 @@ export async function verifyLoginOtpCode(
   }
 
   if (!profile || profile.status !== "active") {
-    return {
-      ok: false,
-      error: "No account found for that email. Ask an admin to invite you.",
-      status: 404,
-    };
+    return { ok: false, error: INVALID_CODE_ERROR, status: 401 };
   }
 
   const { data: otpRow, error: otpError } = await admin
@@ -187,11 +186,7 @@ export async function verifyLoginOtpCode(
   }
 
   if (!otpRow) {
-    return {
-      ok: false,
-      error: "No active code. Request a new one.",
-      status: 400,
-    };
+    return { ok: false, error: INVALID_CODE_ERROR, status: 401 };
   }
 
   if (new Date(otpRow.expires_at).getTime() < Date.now()) {
@@ -218,21 +213,40 @@ export async function verifyLoginOtpCode(
     };
   }
 
-  const expected = otpRow.code_hash;
-  const actual = hashOtp(email, code);
+  // Claim this attempt before checking the code. The update only matches if
+  // nobody else bumped the counter since we read it, so concurrent guesses
+  // cannot all slip through on the same count.
+  const { data: claimed } = await admin
+    .from("login_otps")
+    .update({ attempts: otpRow.attempts + 1 })
+    .eq("id", otpRow.id)
+    .eq("attempts", otpRow.attempts)
+    .is("consumed_at", null)
+    .select("id");
 
-  if (!codesMatch(expected, actual)) {
-    await admin
-      .from("login_otps")
-      .update({ attempts: otpRow.attempts + 1 })
-      .eq("id", otpRow.id);
+  if (!claimed?.length) {
+    return {
+      ok: false,
+      error: "Too many attempts at once. Try again.",
+      status: 429,
+    };
+  }
+
+  if (!codesMatch(otpRow.code_hash, hashOtp(email, code))) {
     return { ok: false, error: "Invalid verification code.", status: 401 };
   }
 
-  await admin
+  // Single use: only the first request to consume the row wins.
+  const { data: consumed } = await admin
     .from("login_otps")
     .update({ consumed_at: new Date().toISOString() })
-    .eq("id", otpRow.id);
+    .eq("id", otpRow.id)
+    .is("consumed_at", null)
+    .select("id");
+
+  if (!consumed?.length) {
+    return { ok: false, error: INVALID_CODE_ERROR, status: 401 };
+  }
 
   return { ok: true, userId: profile.id };
 }

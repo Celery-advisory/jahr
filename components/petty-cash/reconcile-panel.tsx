@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -67,10 +67,9 @@ export function ReconcilePanel({
     label: item.label,
   }));
 
-  const expectedLabel = useMemo(() => {
-    if (!fund) return "";
-    return formatPettyCashMoney(fund.availableBalance, fund.currency);
-  }, [fund]);
+  const expectedLabel = fund
+    ? formatPettyCashMoney(fund.availableBalance, fund.currency)
+    : "";
 
   function submit() {
     void run(async () => {

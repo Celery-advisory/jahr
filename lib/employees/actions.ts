@@ -314,8 +314,6 @@ export async function createEmployee(
     return { error: "Select a valid employment status." };
   }
 
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
 
   const employeeNumberResult = await resolveEmployeeNumber(

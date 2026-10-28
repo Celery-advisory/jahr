@@ -159,13 +159,18 @@ export function EmployeeProfile({
       ] ?? formatLabel(profile.immigration_status))
     : "-";
 
+  // Deep links (#pay, #contract) pick the opening tab. The hash only exists
+  // in the browser, so this runs after hydration rather than in initial state.
   useEffect(() => {
-    if (window.location.hash === "#pay" && isAdmin) {
-      setTab("compensation");
-    }
-    if (window.location.hash === "#contract") {
-      setTab("documents");
-    }
+    const hash = window.location.hash;
+    const initialTab: ProfileTab | null =
+      hash === "#contract"
+        ? "documents"
+        : hash === "#pay" && isAdmin
+          ? "compensation"
+          : null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialTab) setTab(initialTab);
   }, [isAdmin]);
 
   return (

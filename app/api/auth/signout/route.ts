@@ -9,13 +9,13 @@ import { createClient } from "@/utils/supabase/server";
  * signing out from a layout leaves the auth cookie in place and the proxy
  * bounces the request straight back to /dashboard.
  */
-export async function GET(request: Request) {
+async function signOutAndRedirect(request: Request) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
   await supabase.auth.signOut();
 
-  const response = NextResponse.redirect(new URL("/login", request.url));
+  const response = NextResponse.redirect(new URL("/login", request.url), 303);
 
   // Belt and braces: drop any Supabase auth cookie the SDK left behind so the
   // proxy cannot see a stale user and redirect back into the app.
@@ -26,4 +26,24 @@ export async function GET(request: Request) {
   }
 
   return response;
+}
+
+/**
+ * GET exists for server-side `redirect(SIGN_OUT_PATH)` calls. Refuse it when
+ * another site triggered the request (link, image tag) so outsiders cannot
+ * log people out.
+ */
+export async function GET(request: Request) {
+  if (request.headers.get("sec-fetch-site") === "cross-site") {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  return signOutAndRedirect(request);
+}
+
+export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  return signOutAndRedirect(request);
 }

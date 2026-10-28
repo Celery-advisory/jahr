@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -95,13 +95,15 @@ function LinkToolbarControl({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const current = editor.getAttributes("link").href;
-    setUrl(typeof current === "string" && current.length > 0 ? current : "");
-    setError(null);
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, [editor, open]);
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      const current = editor.getAttributes("link").href;
+      setUrl(typeof current === "string" && current.length > 0 ? current : "");
+      setError(null);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+    setOpen(next);
+  }
 
   function handleApply(event: React.FormEvent) {
     event.preventDefault();
@@ -128,7 +130,7 @@ function LinkToolbarControl({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <Tooltip>
         <TooltipTrigger
           render={

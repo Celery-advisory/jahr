@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { displayName } from "@/lib/types/database";
 import type { EmployeeProfile } from "@/lib/types/employee";
 import { useAsyncAction } from "@/lib/hooks/use-async-action";
 import { cn } from "@/lib/utils";
+import { useResetOnChange } from "@/lib/hooks/use-reset-on-change";
 
 function emptyValue(value: string | null | undefined): string {
   const trimmed = value?.trim();
@@ -52,7 +53,7 @@ export function SettingsForm({ profile }: { profile: EmployeeProfile }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
+  useResetOnChange([profile], () => {
     setFirstName(profile.first_name);
     setLastName(profile.last_name);
     setPreferredName(profile.preferred_name ?? "");
@@ -61,7 +62,7 @@ export function SettingsForm({ profile }: { profile: EmployeeProfile }) {
     setAddressLine(profile.address_line ?? "");
     setCity(profile.city ?? "");
     setCountry(profile.country || "Ghana");
-  }, [profile]);
+  });
 
   const name = displayName({
     first_name: firstName,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Minus, Plus } from "lucide-react";
 import { institutionTone, unitLabel } from "@/components/admin/organogram-tree";
@@ -137,7 +137,7 @@ export function OrganogramBoard({
     : null;
   const scale = fit ? fit.scale * zoom : 1;
 
-  function rememberCenter() {
+  const rememberCenter = useCallback(() => {
     const scroller = frameRef.current;
     if (!scroller || scroller.scrollWidth === 0 || scroller.scrollHeight === 0) {
       return;
@@ -146,7 +146,7 @@ export function OrganogramBoard({
       x: (scroller.scrollLeft + scroller.clientWidth / 2) / scroller.scrollWidth,
       y: (scroller.scrollTop + scroller.clientHeight / 2) / scroller.scrollHeight,
     };
-  }
+  }, [frameRef]);
 
   function setZoomTo(next: number) {
     rememberCenter();
@@ -162,7 +162,7 @@ export function OrganogramBoard({
       anchor.x * scroller.scrollWidth - scroller.clientWidth / 2;
     scroller.scrollTop =
       anchor.y * scroller.scrollHeight - scroller.clientHeight / 2;
-  }, [zoom]);
+  }, [frameRef, zoom]);
 
   useEffect(() => {
     const scroller = frameRef.current;
@@ -178,7 +178,7 @@ export function OrganogramBoard({
 
     scroller.addEventListener("wheel", onWheel, { passive: false });
     return () => scroller.removeEventListener("wheel", onWheel);
-  }, [roots.length]);
+  }, [frameRef, rememberCenter, roots.length]);
 
   if (roots.length === 0) {
     return (

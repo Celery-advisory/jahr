@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/petty-cash/confirm-dialog";
@@ -33,6 +33,7 @@ import type {
   PettyCashSettings,
 } from "@/lib/petty-cash/types";
 import { REPORTING_CURRENCIES } from "@/lib/payroll/currencies";
+import { useResetOnChange } from "@/lib/hooks/use-reset-on-change";
 
 const CURRENCIES = REPORTING_CURRENCIES.map((code) => ({
   value: code,
@@ -79,7 +80,7 @@ export function FundSheet({
     null,
   );
 
-  useEffect(() => {
+  useResetOnChange([open, fund, settings], () => {
     if (!open) return;
     setName(fund?.name ?? "");
     setDescription(fund?.description ?? "");
@@ -99,7 +100,7 @@ export function FundSheet({
     );
     setDepartmentId(fund?.departmentId ?? "none");
     setStatus(fund?.status ?? "active");
-  }, [open, fund, settings]);
+  });
 
   const activePeople = people.filter((person) => person.status === "active");
   const selectedCustodians = custodianIds.flatMap((id) => {

@@ -22,9 +22,13 @@ export function AuthEntryTransition({
   ready,
   onComplete,
 }: AuthEntryTransitionProps) {
-  const mountedAt = useRef(Date.now());
+  const mountedAt = useRef<number | null>(null);
   const completed = useRef(false);
   const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!ready || completed.current) return;
@@ -35,7 +39,7 @@ export function AuthEntryTransition({
     const minVisible = prefersReducedMotion ? 200 : MIN_VISIBLE_MS;
     const settle = prefersReducedMotion ? 0 : SUCCESS_SETTLE_MS;
 
-    const elapsed = Date.now() - mountedAt.current;
+    const elapsed = Date.now() - (mountedAt.current ?? Date.now());
     const wait = Math.max(settle, minVisible - elapsed);
 
     const settleTimer = window.setTimeout(() => {

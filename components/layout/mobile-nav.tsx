@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { useResetOnChange } from "@/lib/hooks/use-reset-on-change";
 import type { ProfileWithOrg } from "@/lib/types/database";
 
 interface MobileNavProps {
@@ -22,9 +23,8 @@ export function MobileNav({ profile }: MobileNavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Close the drawer after navigating.
+  useResetOnChange([pathname], () => setOpen(false));
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

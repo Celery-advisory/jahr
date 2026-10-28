@@ -14,6 +14,9 @@ export function usePostLoginEntrance(): boolean {
     try {
       if (sessionStorage.getItem(AUTH_ENTRY_FLAG) === "1") {
         sessionStorage.removeItem(AUTH_ENTRY_FLAG);
+        // Read after mount on purpose: sessionStorage does not exist during
+        // SSR, so a lazy initial state would cause a hydration mismatch.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActive(true);
       }
     } catch {

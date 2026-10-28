@@ -184,7 +184,10 @@ export function NotificationsPanel({ initialItems }: NotificationsPanelProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
 
+  // localStorage only exists in the browser; loading it after mount keeps
+  // the server and first client render identical.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReadIds(loadReadIds());
   }, []);
 

@@ -1,5 +1,6 @@
 import { NotificationsPanel } from "@/components/notifications/notifications-panel";
 import { getNotificationsForViewer } from "@/lib/notifications/get-for-viewer";
+import type { NotificationItem } from "@/lib/notifications/types";
 
 /**
  * Streams the notification feed so a slow announcements query never blocks the
@@ -7,11 +8,11 @@ import { getNotificationsForViewer } from "@/lib/notifications/get-for-viewer";
  * header, which the app layout renders outside any error boundary.
  */
 export async function HeaderNotifications() {
+  let notifications: NotificationItem[] = [];
   try {
-    const notifications = await getNotificationsForViewer(30);
-    return <NotificationsPanel initialItems={notifications} />;
+    notifications = await getNotificationsForViewer(30);
   } catch (error) {
     console.error("[header] notifications", error);
-    return <NotificationsPanel initialItems={[]} />;
   }
+  return <NotificationsPanel initialItems={notifications} />;
 }
