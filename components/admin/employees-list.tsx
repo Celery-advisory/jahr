@@ -4,9 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
   Eye,
   Mars,
   MoreHorizontal,
@@ -14,16 +11,17 @@ import {
   Venus,
   Wallet,
 } from "lucide-react";
+import {
+  SortHeader,
+  SortSelect,
+  nextSort,
+  sortCollator,
+  type Sort,
+  type SortDirection,
+} from "@/components/admin/list-sort";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyIllustration, EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
@@ -33,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { DirectoryEmployee } from "@/lib/employees/get-directory";
+import { leavingReasonLabel } from "@/lib/employees/leaving-reason";
 import { normalizeGender } from "@/lib/employees/normalize-gender";
 import type { EmploymentStatus } from "@/lib/types/database";
 import { displayName } from "@/lib/types/database";
@@ -40,10 +39,8 @@ import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "active";
 type SortKey = "name" | "position" | "department" | "status";
-type SortDirection = "asc" | "desc";
-type Sort = { key: SortKey; direction: SortDirection };
 
-const SORT_ITEMS: { value: string; label: string }[] = [
+const SORT_ITEMS: { value: `${SortKey}:${SortDirection}`; label: string }[] = [
   { value: "name:asc", label: "Name A–Z" },
   { value: "name:desc", label: "Name Z–A" },
   { value: "position:asc", label: "Position A–Z" },
@@ -87,15 +84,13 @@ function searchText(employee: DirectoryEmployee): string {
     .toLowerCase();
 }
 
-const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-
 /** Sorts by the chosen column, keeps blanks last, then falls back to name. */
 function compareEmployees(
   a: DirectoryEmployee,
   b: DirectoryEmployee,
-  sort: Sort,
+  sort: Sort<SortKey>,
 ): number {
-  const byName = collator.compare(displayName(a), displayName(b));
+  const byName = sortCollator.compare(displayName(a), displayName(b));
   const sign = sort.direction === "asc" ? 1 : -1;
 
   if (sort.key === "name") return byName * sign;
@@ -109,7 +104,7 @@ function compareEmployees(
   if (!left && !right) return byName;
   if (!left) return 1;
   if (!right) return -1;
-  const diff = collator.compare(left, right);
+  const diff = sortCollator.compare(left, right);
   return diff !== 0 ? diff * sign : byName;
 }
 
@@ -117,13 +112,7 @@ function statusLabel(
   status: EmploymentStatus,
   leavingReason?: string | null,
 ): string {
-  if (status === "terminated") {
-    const reason = leavingReason?.toLowerCase() ?? "";
-    if (reason.includes("dismiss") || reason.includes("fir")) return "Fired";
-    if (reason.includes("resign")) return "Resigned";
-    if (reason.includes("contract")) return "Contract ended";
-    return "Left";
-  }
+  if (status === "terminated") return leavingReasonLabel(leavingReason);
   if (status === "inactive") return "Inactive";
   if (status === "onboarding") return "Onboarding";
   return "Active";
@@ -164,7 +153,7 @@ export function EmployeesList({
   const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<Sort>({ key: "name", direction: "asc" });
+  const [sort, setSort] = useState<Sort<SortKey>>({ key: "name", direction: "asc" });
   const isAlumni = variant === "alumni";
 
   const stats = useMemo(() => {
@@ -206,14 +195,8 @@ export function EmployeesList({
   }, [indexed, filter, isAlumni, query, sort]);
 
   function toggleSort(key: SortKey) {
-    setSort((current) =>
-      current.key === key
-        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: "asc" },
-    );
+    setSort((current) => nextSort(current, key));
   }
-
-  const sortValue = `${sort.key}:${sort.direction}`;
 
   if (employees.length === 0) {
     if (isAlumni) {
@@ -373,29 +356,12 @@ export function EmployeesList({
           />
         </div>
         <div className="md:hidden">
-          <Select
-            value={sortValue}
-            onValueChange={(next) => {
-              if (next === null) return;
-              const [key, direction] = String(next).split(":");
-              setSort({
-                key: key as SortKey,
-                direction: direction as SortDirection,
-              });
-            }}
+          <SortSelect
+            sort={sort}
+            onSortChange={setSort}
             items={SORT_ITEMS}
-          >
-            <SelectTrigger className="w-full sm:w-44" aria-label="Sort by">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent alignItemWithTrigger={false} align="start">
-              {SORT_ITEMS.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            className="sm:w-44"
+          />
         </div>
       </div>
 
@@ -535,43 +501,5 @@ export function EmployeesList({
         </div>
       </div>
     </div>
-  );
-}
-
-function SortHeader({
-  label,
-  sortKey,
-  sort,
-  onSort,
-}: {
-  label: string;
-  sortKey: SortKey;
-  sort: Sort;
-  onSort: (key: SortKey) => void;
-}) {
-  const active = sort.key === sortKey;
-  return (
-    <span>
-      <button
-        type="button"
-        aria-label={`Sort by ${label.toLowerCase()}`}
-        onClick={() => onSort(sortKey)}
-        className={cn(
-          "inline-flex items-center gap-1 text-xs font-medium hover:text-foreground",
-          active && "text-foreground",
-        )}
-      >
-        {label}
-        {active ? (
-          sort.direction === "asc" ? (
-            <ChevronUp className="size-3.5" />
-          ) : (
-            <ChevronDown className="size-3.5" />
-          )
-        ) : (
-          <ChevronsUpDown className="size-3.5 opacity-40" />
-        )}
-      </button>
-    </span>
   );
 }

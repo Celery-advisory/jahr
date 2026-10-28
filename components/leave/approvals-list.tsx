@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { ChevronDown, Search } from "lucide-react";
+import {
+  SortHeader,
+  SortSelect,
+  compareValues,
+  nextSort,
+  type Sort,
+  type SortDirection,
+} from "@/components/admin/list-sort";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -35,6 +43,40 @@ import { cn } from "@/lib/utils";
 import { useAsyncAction } from "@/lib/hooks/use-async-action";
 
 type TabId = "open" | "closed";
+type SortKey =
+  "reference" | "employee" | "type" | "dates" | "days" | "submitted";
+
+const SORT_ITEMS: { value: `${SortKey}:${SortDirection}`; label: string }[] = [
+  { value: "submitted:desc", label: "Newest request" },
+  { value: "submitted:asc", label: "Oldest request" },
+  { value: "dates:asc", label: "Leave starting soonest" },
+  { value: "dates:desc", label: "Leave starting latest" },
+  { value: "employee:asc", label: "Employee A–Z" },
+  { value: "employee:desc", label: "Employee Z–A" },
+  { value: "type:asc", label: "Leave type A–Z" },
+  { value: "type:desc", label: "Leave type Z–A" },
+  { value: "days:desc", label: "Most days" },
+  { value: "days:asc", label: "Fewest days" },
+  { value: "reference:asc", label: "Reference ascending" },
+  { value: "reference:desc", label: "Reference descending" },
+];
+
+function sortValue(row: ApprovalQueueRecord, key: SortKey): string | number {
+  switch (key) {
+    case "reference":
+      return row.reference;
+    case "employee":
+      return row.employeeName;
+    case "type":
+      return typeLabel(row.type);
+    case "dates":
+      return row.startDate;
+    case "days":
+      return row.workingDays;
+    case "submitted":
+      return row.submittedAt;
+  }
+}
 
 function typeLabel(type: ApprovalQueueRecord["type"]): string {
   return leaveTypeLabel(type);
@@ -94,6 +136,10 @@ export function ApprovalsList({
   const { pending, run } = useAsyncAction();
   const [tab, setTab] = useState<TabId>("open");
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort<SortKey>>({
+    key: "submitted",
+    direction: "desc",
+  });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [decliningId, setDecliningId] = useState<string | null>(null);
   const [declineNotes, setDeclineNotes] = useState("");
@@ -108,11 +154,29 @@ export function ApprovalsList({
   const rows = tab === "open" ? openRows : closed;
   const normalizedQuery = query.trim().toLowerCase();
   const visible = useMemo(
-    () => rows.filter((row) => matchesSearch(row, normalizedQuery)),
-    [rows, normalizedQuery],
+    () =>
+      rows
+        .filter((row) => matchesSearch(row, normalizedQuery))
+        .sort(
+          (a, b) =>
+            compareValues(
+              sortValue(a, sort.key),
+              sortValue(b, sort.key),
+              sort.direction,
+            ) || compareValues(a.submittedAt, b.submittedAt, "desc"),
+        ),
+    [rows, normalizedQuery, sort],
   );
 
-  function respond(requestId: string, approved: boolean, managerNotes?: string) {
+  function toggleSort(key: SortKey) {
+    setSort((current) => nextSort(current, key));
+  }
+
+  function respond(
+    requestId: string,
+    approved: boolean,
+    managerNotes?: string,
+  ) {
     setError(null);
     setNotice(null);
     setBusyId(requestId);
@@ -127,8 +191,7 @@ export function ApprovalsList({
         if (result.success) {
           setDecidedIds((current) => new Set(current).add(requestId));
           setNotice(
-            result.error ??
-              (approved ? "Leave approved." : "Leave declined."),
+            result.error ?? (approved ? "Leave approved." : "Leave declined."),
           );
           setDecliningId(null);
           setDeclineNotes("");
@@ -197,7 +260,11 @@ export function ApprovalsList({
           <div className="flex gap-1">
             {(
               [
-                { id: "open", label: "Open applications", count: openRows.length },
+                {
+                  id: "open",
+                  label: "Open applications",
+                  count: openRows.length,
+                },
                 {
                   id: "closed",
                   label: "Closed applications",
@@ -234,14 +301,24 @@ export function ApprovalsList({
             })}
           </div>
 
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search name, ref, or type"
-              className="h-9 pl-9"
-            />
+          <div className="flex w-full flex-col gap-2 sm:max-w-md sm:flex-row">
+            <div className="relative w-full">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search name, ref, or type"
+                aria-label="Search leave applications"
+                className="h-9 pl-9"
+              />
+            </div>
+            <div className="lg:hidden sm:w-48 sm:shrink-0">
+              <SortSelect
+                sort={sort}
+                onSortChange={setSort}
+                items={SORT_ITEMS}
+              />
+            </div>
           </div>
         </div>
 
@@ -255,13 +332,43 @@ export function ApprovalsList({
         ) : null}
 
         <div className="hidden grid-cols-[6.5rem_minmax(0,1.4fr)_7rem_minmax(0,1.3fr)_4rem_4.5rem_6.5rem_6.5rem_6.5rem] gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase lg:grid">
-          <span>Ref</span>
-          <span>Employee</span>
-          <span>Type</span>
-          <span>Dates</span>
-          <span>Days</span>
+          <SortHeader
+            label="Ref"
+            sortKey="reference"
+            sort={sort}
+            onSort={toggleSort}
+          />
+          <SortHeader
+            label="Employee"
+            sortKey="employee"
+            sort={sort}
+            onSort={toggleSort}
+          />
+          <SortHeader
+            label="Type"
+            sortKey="type"
+            sort={sort}
+            onSort={toggleSort}
+          />
+          <SortHeader
+            label="Dates"
+            sortKey="dates"
+            sort={sort}
+            onSort={toggleSort}
+          />
+          <SortHeader
+            label="Days"
+            sortKey="days"
+            sort={sort}
+            onSort={toggleSort}
+          />
           <span>Hours</span>
-          <span>Req. date</span>
+          <SortHeader
+            label="Req. date"
+            sortKey="submitted"
+            sort={sort}
+            onSort={toggleSort}
+          />
           <span>Status</span>
           <span>Actions</span>
         </div>
@@ -350,7 +457,10 @@ export function ApprovalsList({
                     <div>
                       <Badge
                         variant="outline"
-                        className={cn("rounded-md font-normal", badge.className)}
+                        className={cn(
+                          "rounded-md font-normal",
+                          badge.className,
+                        )}
                       >
                         {badge.label}
                       </Badge>
@@ -361,7 +471,10 @@ export function ApprovalsList({
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
+                              buttonVariants({
+                                variant: "outline",
+                                size: "sm",
+                              }),
                               "gap-1",
                             )}
                             disabled={pending}
@@ -370,7 +483,10 @@ export function ApprovalsList({
                             Action
                             <ChevronDown className="size-3.5 opacity-70" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="min-w-40">
+                          <DropdownMenuContent
+                            align="start"
+                            className="min-w-40"
+                          >
                             <DropdownMenuItem
                               onClick={() => respond(row.id, true)}
                             >
@@ -495,7 +611,9 @@ export function ApprovalsList({
                                 respond(row.id, false, declineNotes)
                               }
                             >
-                              {isBusy ? <Spinner className="mr-1 size-3.5" /> : null}
+                              {isBusy ? (
+                                <Spinner className="mr-1 size-3.5" />
+                              ) : null}
                               Confirm decline
                             </Button>
                             <Button
@@ -523,8 +641,8 @@ export function ApprovalsList({
 
         <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
           Showing {visible.length} of {rows.length}{" "}
-          {rows.length === 1 ? "application" : "applications"} · {WORKDAY_HOURS}h
-          per working day
+          {rows.length === 1 ? "application" : "applications"} · {WORKDAY_HOURS}
+          h per working day
         </div>
       </div>
 
@@ -560,9 +678,7 @@ export function ApprovalsList({
                         parseISO(entry.endDate),
                       )}{" "}
                       · {entry.workingDays}d / {entry.workingHours}h
-                      {entry.managerNotes
-                        ? ` · “${entry.managerNotes}”`
-                        : ""}
+                      {entry.managerNotes ? ` · “${entry.managerNotes}”` : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

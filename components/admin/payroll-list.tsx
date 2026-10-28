@@ -2,9 +2,18 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
+import {
+  SortSelect,
+  compareValues,
+  sortCollator,
+  type Sort,
+  type SortDirection,
+} from "@/components/admin/list-sort";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,6 +34,7 @@ import {
 } from "@/lib/payroll/currencies";
 import {
   buildPayrollAnalysis,
+  monthlyGrossIn,
   needsPayrollSetup,
   payFrequencyLabel,
 } from "@/lib/payroll/entity-analysis";
@@ -34,6 +44,33 @@ import { cn } from "@/lib/utils";
 
 const ALL_FILTER = "all";
 const NEEDS_SETUP_FILTER = "needs-setup";
+
+type SortKey = "name" | "pay" | "setup" | "entity";
+
+const SORT_ITEMS: { value: `${SortKey}:${SortDirection}`; label: string }[] = [
+  { value: "name:asc", label: "Name A–Z" },
+  { value: "name:desc", label: "Name Z–A" },
+  { value: "pay:desc", label: "Pay: highest first" },
+  { value: "pay:asc", label: "Pay: lowest first" },
+  { value: "entity:asc", label: "Paying entity A–Z" },
+  { value: "setup:asc", label: "Needs setup first" },
+];
+
+function searchText(employee: PayrollEmployeeSummary): string {
+  return [
+    displayName(employee),
+    employee.first_name,
+    employee.last_name,
+    employee.email,
+    employee.employee_number,
+    employee.job_title,
+    employee.department_name,
+    employee.legal_entity_paying,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
 
 const CURRENCY_ITEMS = REPORTING_CURRENCIES.map((code) => ({
   value: code,
@@ -83,9 +120,13 @@ export function PayrollList({
   reportingCurrency: ReportingCurrency;
 }) {
   const [filter, setFilter] = useState(ALL_FILTER);
-  const [reportingCurrency, setReportingCurrency] = useState<ReportingCurrency>(
-    orgReportingCurrency,
-  );
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort<SortKey>>({
+    key: "name",
+    direction: "asc",
+  });
+  const [reportingCurrency, setReportingCurrency] =
+    useState<ReportingCurrency>(orgReportingCurrency);
   const listRef = useRef<HTMLDivElement>(null);
 
   const analysis = useMemo(
@@ -105,15 +146,42 @@ export function PayrollList({
     );
   }, [employees]);
 
+  const indexed = useMemo(
+    () => employees.map((row) => ({ row, text: searchText(row) })),
+    [employees],
+  );
+
   const visible = useMemo(() => {
-    if (filter === ALL_FILTER) return employees;
-    if (filter === NEEDS_SETUP_FILTER) {
-      return employees.filter(needsPayrollSetup);
-    }
-    return employees.filter(
-      (row) => row.legal_entity_paying?.trim() === filter,
-    );
-  }, [employees, filter]);
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const value = (row: PayrollEmployeeSummary): string | number | null => {
+      if (sort.key === "pay") {
+        return monthlyGrossIn(row, reportingCurrency, rates);
+      }
+      if (sort.key === "entity") return row.legal_entity_paying?.trim() || null;
+      if (sort.key === "setup") return needsPayrollSetup(row) ? 0 : 1;
+      return displayName(row);
+    };
+    return indexed
+      .filter(({ row, text }) => {
+        if (filter === NEEDS_SETUP_FILTER && !needsPayrollSetup(row)) {
+          return false;
+        }
+        if (
+          filter !== ALL_FILTER &&
+          filter !== NEEDS_SETUP_FILTER &&
+          row.legal_entity_paying?.trim() !== filter
+        ) {
+          return false;
+        }
+        return terms.every((term) => text.includes(term));
+      })
+      .map(({ row }) => row)
+      .sort(
+        (a, b) =>
+          compareValues(value(a), value(b), sort.direction) ||
+          sortCollator.compare(displayName(a), displayName(b)),
+      );
+  }, [indexed, filter, query, sort, reportingCurrency, rates]);
 
   function showNeedsSetup() {
     setFilter(NEEDS_SETUP_FILTER);
@@ -177,6 +245,21 @@ export function PayrollList({
       />
 
       <div className="flex flex-col gap-3" ref={listRef}>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_13rem] lg:max-w-xl">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search name, payroll no., role, entity"
+              aria-label="Search payroll"
+              className="pl-8"
+            />
+          </div>
+          <SortSelect sort={sort} onSortChange={setSort} items={SORT_ITEMS} />
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <FilterChip
             label="All"
@@ -208,7 +291,11 @@ export function PayrollList({
             surface
             size="compact"
             kind="search"
-            title="No people in this entity"
+            title={
+              query.trim()
+                ? `No one matches "${query.trim()}"`
+                : "No people in this entity"
+            }
           />
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-card">

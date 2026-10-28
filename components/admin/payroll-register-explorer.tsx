@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
+import {
+  SortHeader,
+  SortSelect,
+  compareValues,
+  nextSort,
+  sortCollator,
+  type Sort,
+  type SortDirection,
+} from "@/components/admin/list-sort";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,6 +22,65 @@ import {
 } from "@/lib/payroll/entity-analysis";
 import type { PayrollRegisterEntry } from "@/lib/payroll/types";
 import { cn } from "@/lib/utils";
+
+type SortKey = "reference" | "employee" | "period" | "net" | "generated";
+
+const SORT_ITEMS: { value: `${SortKey}:${SortDirection}`; label: string }[] = [
+  { value: "generated:desc", label: "Newest generated" },
+  { value: "generated:asc", label: "Oldest generated" },
+  { value: "period:desc", label: "Latest period" },
+  { value: "period:asc", label: "Earliest period" },
+  { value: "employee:asc", label: "Employee A–Z" },
+  { value: "employee:desc", label: "Employee Z–A" },
+  { value: "net:desc", label: "Net pay: highest first" },
+  { value: "net:asc", label: "Net pay: lowest first" },
+  { value: "reference:asc", label: "Reference ascending" },
+  { value: "reference:desc", label: "Reference descending" },
+];
+
+const GRID_COLUMNS =
+  "lg:grid-cols-[7.5rem_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_7rem]";
+
+/**
+ * Net pay only compares within a currency, so payslips group by currency
+ * first and sort by amount inside each group.
+ */
+function compareEntries(
+  a: PayrollRegisterEntry,
+  b: PayrollRegisterEntry,
+  sort: Sort<SortKey>,
+): number {
+  const fallback = () =>
+    compareValues(a.generated_at, b.generated_at, "desc") ||
+    sortCollator.compare(a.employee.name, b.employee.name);
+  switch (sort.key) {
+    case "reference":
+      return (
+        compareValues(a.reference, b.reference, sort.direction) || fallback()
+      );
+    case "employee":
+      return (
+        compareValues(a.employee.name, b.employee.name, sort.direction) ||
+        compareValues(a.period_start, b.period_start, "desc")
+      );
+    case "period":
+      return (
+        compareValues(a.period_start, b.period_start, sort.direction) ||
+        fallback()
+      );
+    case "net":
+      return (
+        compareValues(a.currency, b.currency, "asc") ||
+        compareValues(a.net_pay, b.net_pay, sort.direction) ||
+        fallback()
+      );
+    case "generated":
+      return (
+        compareValues(a.generated_at, b.generated_at, sort.direction) ||
+        sortCollator.compare(a.employee.name, b.employee.name)
+      );
+  }
+}
 
 function formatMoney(amount: number | null, currency: string): string {
   if (amount === null) return "—";
@@ -57,6 +125,14 @@ export function PayrollRegisterExplorer({
   const [query, setQuery] = useState("");
   const [year, setYear] = useState<string>("all");
   const [entity, setEntity] = useState<string>("all");
+  const [sort, setSort] = useState<Sort<SortKey>>({
+    key: "generated",
+    direction: "desc",
+  });
+
+  function toggleSort(key: SortKey) {
+    setSort((current) => nextSort(current, key));
+  }
 
   const entities = useMemo(() => {
     const counts = new Map<string, number>();
@@ -92,19 +168,21 @@ export function PayrollRegisterExplorer({
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return entries.filter((entry) => {
-      if (year !== "all" && yearFromPeriod(entry.period_start) !== year) {
-        return false;
-      }
-      if (entity === UNASSIGNED_ENTITY_KEY) {
-        if (entry.legal_entity_paying?.trim()) return false;
-      } else if (entity !== "all" && entry.legal_entity_paying !== entity) {
-        return false;
-      }
-      if (!normalized) return true;
-      return entryHaystack(entry).includes(normalized);
-    });
-  }, [entries, query, year, entity]);
+    return entries
+      .filter((entry) => {
+        if (year !== "all" && yearFromPeriod(entry.period_start) !== year) {
+          return false;
+        }
+        if (entity === UNASSIGNED_ENTITY_KEY) {
+          if (entry.legal_entity_paying?.trim()) return false;
+        } else if (entity !== "all" && entry.legal_entity_paying !== entity) {
+          return false;
+        }
+        if (!normalized) return true;
+        return entryHaystack(entry).includes(normalized);
+      })
+      .sort((a, b) => compareEntries(a, b, sort));
+  }, [entries, query, year, entity, sort]);
 
   if (entries.length === 0) {
     return (
@@ -178,84 +256,126 @@ export function PayrollRegisterExplorer({
           description="Try a reference like PS26-0100, an employee name, or a different year."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="hidden grid-cols-[7.5rem_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_7rem] gap-4 border-b border-[#E7ECF2] bg-[#F6F8FB] px-4 py-2.5 text-left text-xs font-medium text-[#667085] lg:grid">
-            <span>Reference</span>
-            <span>Employee</span>
-            <span>Period</span>
-            <span>Net pay</span>
-            <span>Generated</span>
-            <span>Actions</span>
+        <>
+          <div className="lg:hidden">
+            <SortSelect sort={sort} onSortChange={setSort} items={SORT_ITEMS} />
           </div>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div
+              className={cn(
+                "hidden gap-4 border-b border-[#E7ECF2] bg-[#F6F8FB] px-4 py-2.5 text-left text-xs font-medium text-[#667085] lg:grid",
+                GRID_COLUMNS,
+              )}
+            >
+              <SortHeader
+                label="Reference"
+                sortKey="reference"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <SortHeader
+                label="Employee"
+                sortKey="employee"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <SortHeader
+                label="Period"
+                sortKey="period"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <SortHeader
+                label="Net pay"
+                sortKey="net"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <SortHeader
+                label="Generated"
+                sortKey="generated"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <span>Actions</span>
+            </div>
 
-          <ul className="divide-y divide-border">
-            {filtered.map((entry) => (
-              <li
-                key={entry.id}
-                className="grid gap-3 px-4 py-3.5 lg:grid-cols-[7.5rem_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_7rem] lg:items-center lg:gap-4"
-              >
-                <div>
-                  <Badge
-                    variant="outline"
-                    className="rounded-md font-mono text-[11px] font-normal"
-                  >
-                    {entry.reference ?? "—"}
-                  </Badge>
-                </div>
+            <ul className="divide-y divide-border">
+              {filtered.map((entry) => (
+                <li
+                  key={entry.id}
+                  className={cn(
+                    "grid gap-3 px-4 py-3.5 lg:items-center lg:gap-4",
+                    GRID_COLUMNS,
+                  )}
+                >
+                  <div>
+                    <Badge
+                      variant="outline"
+                      className="rounded-md font-mono text-[11px] font-normal"
+                    >
+                      {entry.reference ?? "—"}
+                    </Badge>
+                  </div>
 
-                <div className="min-w-0">
-                  <Link
-                    href={`/admin/payroll/register/${entry.id}`}
-                    className="truncate text-sm font-medium hover:underline"
-                  >
-                    {entry.employee.name}
-                  </Link>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {entry.employee.employee_number ?? "No payroll no."}
-                    {entry.employee.job_title
-                      ? ` · ${entry.employee.job_title}`
-                      : ""}
-                    {entry.legal_entity_paying
-                      ? ` · ${entry.legal_entity_paying}`
-                      : ""}
+                  <div className="min-w-0">
+                    <Link
+                      href={`/admin/payroll/register/${entry.id}`}
+                      className="truncate text-sm font-medium hover:underline"
+                    >
+                      {entry.employee.name}
+                    </Link>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {entry.employee.employee_number ?? "No payroll no."}
+                      {entry.employee.job_title
+                        ? ` · ${entry.employee.job_title}`
+                        : ""}
+                      {entry.legal_entity_paying
+                        ? ` · ${entry.legal_entity_paying}`
+                        : ""}
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    {entry.period_label}
                   </p>
-                </div>
 
-                <p className="text-sm text-muted-foreground">{entry.period_label}</p>
+                  <p className="text-sm tabular-nums text-muted-foreground">
+                    {formatMoney(entry.net_pay, entry.currency)}
+                  </p>
 
-                <p className="text-sm tabular-nums text-muted-foreground">
-                  {formatMoney(entry.net_pay, entry.currency)}
-                </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatGeneratedAt(entry.generated_at)}
+                  </p>
 
-                <p className="text-sm text-muted-foreground">
-                  {formatGeneratedAt(entry.generated_at)}
-                </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/admin/payroll/register/${entry.id}`}
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "ghost" }),
+                      )}
+                    >
+                      View
+                    </Link>
+                    <a
+                      href={`/api/payslips/${entry.id}/pdf`}
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "secondary" }),
+                      )}
+                    >
+                      <Download className="size-3.5" />
+                      PDF
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/admin/payroll/register/${entry.id}`}
-                    className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}
-                  >
-                    View
-                  </Link>
-                  <a
-                    href={`/api/payslips/${entry.id}/pdf`}
-                    className={cn(
-                      buttonVariants({ size: "sm", variant: "secondary" }),
-                    )}
-                  >
-                    <Download className="size-3.5" />
-                    PDF
-                  </a>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-            Showing {filtered.length} of {entries.length} locked records
+            <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+              Showing {filtered.length} of {entries.length} locked records
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

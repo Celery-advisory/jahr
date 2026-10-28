@@ -138,6 +138,22 @@ function monthlyFigures(
 }
 
 /**
+ * Monthly gross converted to `currency`, for comparing people paid in
+ * different currencies. Null when there is no pay or no rate for the pair.
+ */
+export function monthlyGrossIn(
+  employee: PayrollEmployeeSummary,
+  currency: string,
+  rates: FxRateTable,
+): number | null {
+  const figures = monthlyFigures(employee);
+  if (!figures) return null;
+  const from = normaliseCurrency(employee.currency) || DEFAULT_PAY_CURRENCY;
+  const conversion = resolveFxConversion(from, currency, rates);
+  return conversion ? figures.gross * conversion.rate : null;
+}
+
+/**
  * Someone who cannot be charged to an entity yet. They are kept out of the
  * cost breakdown so they never read as an entity costing nothing.
  */
