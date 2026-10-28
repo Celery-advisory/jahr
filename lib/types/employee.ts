@@ -113,8 +113,12 @@ export interface PayslipRecord {
 }
 
 export interface EmployeeAsset {
+  /** The assignment id. */
   id: string;
+  device_id: string;
   kind: AssetKind;
+  /** Managed device category, e.g. "Laptop" or "SIM card". */
+  category_name: string | null;
   label: string;
   asset_tag: string | null;
   serial_number: string | null;

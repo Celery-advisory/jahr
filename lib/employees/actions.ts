@@ -30,6 +30,10 @@ import {
 } from "@/lib/payroll/payroll-number";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
+import {
+  settleDevicesForOffboarding,
+  type OffboardingDeviceDecision,
+} from "@/lib/devices/events";
 
 export interface EmployeeActionResult {
   error?: string;
@@ -86,6 +90,8 @@ export interface OffboardEmployeeInput {
   employeeId: string;
   terminationDate: string;
   leavingReason: string;
+  /** What happened to each company device they still hold. */
+  devices?: OffboardingDeviceDecision[];
 }
 
 const HIRE_STATUSES = ["active", "inactive", "onboarding"] as const;
@@ -642,7 +648,7 @@ export async function offboardEmployee(
 
   const { data: existing, error: existingError } = await supabase
     .from("profiles")
-    .select("id, status")
+    .select("id, status, first_name, preferred_name")
     .eq("id", employeeId)
     .maybeSingle();
 
@@ -651,6 +657,17 @@ export async function offboardEmployee(
   }
   if (existing.status === "terminated") {
     return { error: "This person is already in Alumni." };
+  }
+
+  // Settle devices first so a failure leaves the employee untouched.
+  const devices = await settleDevicesForOffboarding(supabase, {
+    employeeId,
+    employeeName: existing.preferred_name?.trim() || existing.first_name,
+    actorId: viewer.id,
+    decisions: input.devices ?? [],
+  });
+  if (devices.error) {
+    return { error: devices.error };
   }
 
   const { error: updateError } = await supabase
@@ -667,6 +684,7 @@ export async function offboardEmployee(
   }
 
   revalidateEmployeePaths(employeeId);
+  revalidatePath("/admin/devices");
   return { success: true, employeeId };
 }
 
