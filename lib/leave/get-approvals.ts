@@ -31,6 +31,13 @@ interface LeaveRow {
   manager_notes: string | null;
   manager_response_at: string | null;
   submitted_at: string;
+  manager_id: string | null;
+  manager: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    preferred_name: string | null;
+  } | null;
   employee: {
     id: string;
     first_name: string;
@@ -63,6 +70,8 @@ const PREVIEW_OPEN: ApprovalQueueRecord[] = [
     annualUsed: 2,
     annualPending: 5,
     loggedPast: false,
+    approverName: null,
+    awaitingViewer: true,
   },
 ];
 
@@ -109,6 +118,8 @@ function mapApproval(
     string,
     { used: number; pending: number }
   >,
+  viewerId: string,
+  admin: boolean,
 ): ApprovalQueueRecord {
   const workingDays = Number(row.working_days);
   const balance = balanceByEmployee.get(row.employee_id);
@@ -134,6 +145,10 @@ function mapApproval(
     annualUsed: balance?.used ?? null,
     annualPending: balance?.pending ?? null,
     loggedPast: isLoggedPastLeave(row.end_date, row.submitted_at),
+    approverName: row.manager ? displayName(row.manager) : null,
+    awaitingViewer:
+      row.status === "pending" &&
+      (row.manager_id === viewerId || (admin && row.manager_id === null)),
   };
 }
 
@@ -165,8 +180,11 @@ export async function getApprovalsWorkspace(viewer: {
     .from("leave_requests")
     .select(
       `
-      id, employee_id, type, start_date, end_date, working_days, status, notes,
+      id, employee_id, manager_id, type, start_date, end_date, working_days, status, notes,
       manager_notes, manager_response_at, submitted_at,
+      manager:profiles!leave_requests_manager_id_fkey (
+        id, first_name, last_name, preferred_name
+      ),
       employee:profiles!leave_requests_employee_id_fkey (
         id, first_name, last_name, preferred_name, job_title, avatar_url, gender,
         annual_leave_entitlement
@@ -259,7 +277,9 @@ export async function getApprovalsWorkspace(viewer: {
     }
   }
 
-  const mapped = rows.map((row) => mapApproval(row, balanceByEmployee));
+  const mapped = rows.map((row) =>
+    mapApproval(row, balanceByEmployee, viewer.id, admin),
+  );
   const open = mapped
     .filter((row) => row.status === "pending")
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
