@@ -21,7 +21,7 @@ export default async function ApprovalsPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {orgWideView
-            ? "Approve or decline leave across the organisation. Working time is counted on 9–5 days (weekends and Ghana public holidays excluded)."
+            ? "Decide requests waiting on you. Other open requests stay listed with their manager. Working time is counted on 9–5 days (weekends and Ghana public holidays excluded)."
             : "Approve or decline leave for people who report to you. Working time is counted on 9–5 days (weekends and Ghana public holidays excluded)."}
         </p>
       </div>

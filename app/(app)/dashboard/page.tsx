@@ -226,6 +226,7 @@ export default async function DashboardPage() {
             .from("leave_requests")
             .select("id", { count: "exact", head: true })
             .eq("status", "pending")
+            .or(`manager_id.eq.${profile.id},manager_id.is.null`)
         : supabase
             .from("leave_requests")
             .select("id", { count: "exact", head: true })
@@ -339,9 +340,9 @@ export default async function DashboardPage() {
           accent: DASHBOARD_COLORS.people,
         },
         {
-          label: "Pending approvals",
+          label: "Waiting on you",
           value: String(pendingApprovals),
-          hint: pendingApprovals > 0 ? "Needs a decision" : "Queue is clear",
+          hint: pendingApprovals > 0 ? "Needs your decision" : "Nothing waiting on you",
           href: "/approvals",
           icon: "approvals",
           accent: DASHBOARD_COLORS.people,

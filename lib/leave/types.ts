@@ -109,6 +109,10 @@ export interface ApprovalQueueRecord extends PendingApprovalRecord {
   annualUsed: number | null;
   annualPending: number | null;
   loggedPast: boolean;
+  /** Manager who should decide. Null when nobody is assigned. */
+  approverName: string | null;
+  /** True when this viewer is the person who should approve or decline. */
+  awaitingViewer: boolean;
 }
 
 export interface TeamLeaveBalance {

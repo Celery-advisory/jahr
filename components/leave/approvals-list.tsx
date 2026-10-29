@@ -110,6 +110,7 @@ function matchesSearch(row: ApprovalQueueRecord, query: string): boolean {
     row.reference,
     row.employeeName,
     row.employeeJobTitle ?? "",
+    row.approverName ?? "",
     typeLabel(row.type),
     row.notes,
   ]
@@ -167,6 +168,23 @@ export function ApprovalsList({
         ),
     [rows, normalizedQuery, sort],
   );
+  const splitOpen = orgWideView && tab === "open";
+  const visibleYours = splitOpen
+    ? visible.filter((row) => row.awaitingViewer)
+    : visible;
+  const visibleOthers = splitOpen
+    ? visible.filter((row) => !row.awaitingViewer)
+    : [];
+  const sections = splitOpen
+    ? [
+        { key: "yours", title: "Waiting on you", rows: visibleYours },
+        {
+          key: "others",
+          title: "With their manager",
+          rows: visibleOthers,
+        },
+      ].filter((section) => section.rows.length > 0)
+    : [{ key: "all", title: null, rows: visible }];
 
   function toggleSort(key: SortKey) {
     setSort((current) => nextSort(current, key));
@@ -392,7 +410,15 @@ export function ApprovalsList({
           />
         ) : (
           <ul className="divide-y divide-border">
-            {visible.map((row) => {
+            {sections.map((section) => (
+              <li key={section.key}>
+                {section.title ? (
+                  <p className="border-b border-border bg-[#F5F7FB] px-4 py-2 text-xs font-medium text-muted-foreground">
+                    {section.title}
+                  </p>
+                ) : null}
+                <ul className="divide-y divide-border">
+            {section.rows.map((row) => {
               const badge = statusBadge(row.status, row.loggedPast);
               const isBusy = busyId === row.id;
               const isExpanded = expandedId === row.id;
@@ -425,6 +451,11 @@ export function ApprovalsList({
                           ? ` · ${row.annualPending} pending`
                           : ""}
                       </p>
+                      {row.status === "pending" && !row.awaitingViewer ? (
+                        <p className="truncate text-[11px] font-medium text-muted-foreground">
+                          Waiting on {row.approverName ?? "their manager"}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="min-w-0">
@@ -467,7 +498,7 @@ export function ApprovalsList({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {row.status === "pending" ? (
+                      {row.status === "pending" && row.awaitingViewer ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             className={cn(
@@ -481,6 +512,50 @@ export function ApprovalsList({
                           >
                             {isBusy ? <Spinner className="size-3.5" /> : null}
                             Action
+                            <ChevronDown className="size-3.5 opacity-70" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            className="min-w-40"
+                          >
+                            <DropdownMenuItem
+                              onClick={() => respond(row.id, true)}
+                            >
+                              {row.loggedPast ? "Confirm" : "Approve"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setExpandedId(row.id);
+                                setDecliningId(row.id);
+                              }}
+                            >
+                              Decline
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setExpandedId((current) =>
+                                  current === row.id ? null : row.id,
+                                )
+                              }
+                            >
+                              View details
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : row.status === "pending" && orgWideView ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            className={cn(
+                              buttonVariants({
+                                variant: "ghost",
+                                size: "sm",
+                              }),
+                              "gap-1 text-muted-foreground",
+                            )}
+                            disabled={pending}
+                          >
+                            {isBusy ? <Spinner className="size-3.5" /> : null}
+                            Override
                             <ChevronDown className="size-3.5 opacity-70" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
@@ -636,6 +711,9 @@ export function ApprovalsList({
                 </li>
               );
             })}
+                </ul>
+              </li>
+            ))}
           </ul>
         )}
 
